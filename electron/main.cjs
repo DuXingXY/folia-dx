@@ -43,6 +43,7 @@ const { resolveCacheLimit, selectEvictions } = require('./audioCachePrune.cjs');
 const { createAnalysisHost } = require('./analysis/host.cjs');
 const { createDebugHost, runtimeLine } = require('./debug/debugHost.cjs');
 const { createCrashLog, installCrashHandlers } = require('./debug/crashLog.cjs');
+const { shouldOpenDevelopmentDevTools } = require('./developmentDevTools.cjs');
 const { createModelStore } = require('./analysis/modelStore.cjs');
 const { resolveLinuxPasswordStore } = require('./linuxPasswordStore.cjs');
 const { createTranscodeService } = require('./transcode/service.cjs');
@@ -507,6 +508,17 @@ async function relaunchForWallpaperModeChange(nextEnabled, expectedGeneration = 
   // recreates the window to match, and the playback handoff carries the session across the
   // renderer reload.
   if (process.platform === 'win32') {
+    if (nextEnabled && !windowsWallpaper.prepareEntry({
+      clearClickThrough: () => setMainWindowClickThroughEnabled(false),
+      onUnavailable: () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('wallpaper-mode-changed', getPublicSettings());
+        }
+        refreshTrayMenu();
+      },
+    })) {
+      return;
+    }
     const handoff = await requestWindowPlaybackHandoff();
     if (expectedGeneration !== null && expectedGeneration !== wallpaperModeRelaunchGeneration) {
       return;
@@ -4943,7 +4955,12 @@ function createWindow(options = {}) {
   // 首屏加载遮罩是不透明的（index.html 里的 #app-splash）。透明播放背景和壁纸窗口在挂载前
   // 本来就该透出桌面，盖一层黑底会在桌面上闪一个黑块，所以这两种窗口显式关掉它。
   loadAppEntry(win, (useTransparentWindow || useWallpaperGeometry) ? { splash: '0' } : {});
-  if (isElectronDevRuntime()) {
+  if (shouldOpenDevelopmentDevTools({
+    development: isElectronDevRuntime(),
+    transparent: useTransparentWindow,
+    nativeBlur: enableNativeBlur,
+    wallpaper: useWallpaperGeometry,
+  })) {
     win.webContents.openDevTools();
   }
 
@@ -5243,18 +5260,8 @@ app.whenReady().then(async () => {
   // Windows wallpaper mode: attach the helper once the window exists (startup with the setting
   // on; runtime toggles go through scheduleWallpaperModeRelaunch → relaunchForWallpaperModeChange).
   if (isWindowsWallpaperMode()) {
-    const attachResult = windowsWallpaper.attach();
-    if (attachResult === 'missing') {
-      // Clearing the setting is not enough: the window above was already created with the
-      // wallpaper options (thickFrame:false, resizable:false, movable:false). It must be
-      // recreated as an ordinary window or the user is left with a borderless, immovable
-      // shell — same recovery the degrade path performs.
-      store.set(WALLPAPER_MODE_SETTING_KEY, false);
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('wallpaper-mode-changed', getPublicSettings());
-      }
-      recreateMainWindowWithTransparencyMode(isTransparentPlayerBackgroundEnabled(), null);
-    }
+    // Missing helpers recover through the same controller callback as a failed runtime attach.
+    windowsWallpaper.attach();
   }
   // macOS wallpaper mode is an in-place sink that dies with the window, so a `wallpaper_mode`
   // left on by a previous session must be re-applied to the fresh window here. If the FFI bridge

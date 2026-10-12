@@ -161,14 +161,34 @@ function createWindowsWallpaperController(options = {}) {
   // given up, so the caller stops scheduling its own recovery.
   function noteFailure() {
     if (recordFailure() >= crashLoopThreshold) {
-      degraded = true;
       logError('[WallpaperWin] repeated helper failures, disabling wallpaper mode');
-      store.set(WALLPAPER_MODE_SETTING_KEY, false);
-      resetFailureCount();
-      onDegrade?.();
+      degrade();
       return true;
     }
     return false;
+  }
+
+  // Every unavailable-helper path must restore the normal window, including runtime rebuilds
+  // and re-attaches. The callback owns the native-window recovery after the setting is cleared.
+  function degrade() {
+    degraded = true;
+    store.set(WALLPAPER_MODE_SETTING_KEY, false);
+    resetFailureCount();
+    onDegrade?.();
+  }
+
+  // Check before destroying the normal window. A desktop-lyrics overlay may still be
+  // click-through; wallpaper mouse injection needs that separate pointer lock switched off.
+  function prepareEntry({ clearClickThrough, onUnavailable } = {}) {
+    if (!options.helperPath?.()) {
+      logWarn('[WallpaperWin] helper binary missing, cannot enable wallpaper mode');
+      store.set(WALLPAPER_MODE_SETTING_KEY, false);
+      resetFailureCount();
+      onUnavailable?.();
+      return false;
+    }
+    clearClickThrough?.();
+    return true;
   }
 
   function stopHealthyReset() {
@@ -378,6 +398,7 @@ function createWindowsWallpaperController(options = {}) {
     const helperPath = options.helperPath?.();
     if (!helperPath) {
       logWarn('[WallpaperWin] helper binary missing, cannot enable wallpaper mode');
+      degrade();
       return 'missing';
     }
     // Defaults match the renderer settings: both toggles default to on.
@@ -445,6 +466,7 @@ function createWindowsWallpaperController(options = {}) {
   }
 
   return {
+    prepareEntry,
     attach,
     detach,
     killHelper,
