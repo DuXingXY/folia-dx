@@ -5,7 +5,7 @@ import { useVideoLayerSettingsStore } from '../../../stores/useVideoLayerSetting
 import { getVisualizerRegistryEntry } from '../../visualizer/registry';
 import { isLyricSegmentationAiAvailable } from '../../../services/lyricSegmentationAi';
 import type { LyricSegmentationActions } from '../playback/createLyricSegmentationActions';
-import { randomizeVisualStyle } from '../../../services/randomVisualStyle';
+import { randomizeVisualStyle } from '../../visualizer/randomVisualStyle';
 
 // src/components/app/command-palette-context/buildVisualizerCommandContext.ts
 // The `visualizer` namespace. Almost entirely store-backed: App.tsx used to relay all seven

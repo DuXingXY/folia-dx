@@ -1,16 +1,16 @@
-import { VISUALIZER_REGISTRY } from '../components/visualizer/registry';
-import { VISUALIZER_BACKGROUND_REGISTRY } from '../components/visualizer/backgrounds/registry';
-import { useDesktopSettingsStore } from '../stores/useDesktopSettingsStore';
-import { resolveReducedMotion, useMotionSettingsStore } from '../stores/useMotionSettingsStore';
-import { useThemeSettingsStore } from '../stores/useThemeSettingsStore';
-import { useTypographySettingsStore } from '../stores/useTypographySettingsStore';
-import { useVisualizerAssetStore } from '../stores/useVisualizerAssetStore';
-import { useVisualizerSettingsStore } from '../stores/useVisualizerSettingsStore';
-import type { RandomVisualStyleOptions } from '../types/randomVisualStyle';
-import { getRandomLyricsStyleCandidates } from '../utils/randomLyricsStyle';
-import { chooseVisualStyleValue, randomizeVisualStyleTunings, randomVisualStyleNumber } from '../utils/randomVisualStyle';
+import { VISUALIZER_REGISTRY } from './registry';
+import { VISUALIZER_BACKGROUND_REGISTRY } from './backgrounds/registry';
+import { useDesktopSettingsStore } from '../../stores/useDesktopSettingsStore';
+import { resolveReducedMotion, useMotionSettingsStore } from '../../stores/useMotionSettingsStore';
+import { useThemeSettingsStore } from '../../stores/useThemeSettingsStore';
+import { useTypographySettingsStore } from '../../stores/useTypographySettingsStore';
+import { useVisualizerAssetStore } from '../../stores/useVisualizerAssetStore';
+import { useVisualizerSettingsStore } from '../../stores/useVisualizerSettingsStore';
+import type { RandomVisualStyleOptions } from '../../types/randomVisualStyle';
+import { getRandomLyricsStyleCandidates } from '../../utils/randomLyricsStyle';
+import { chooseVisualStyleValue, randomizeVisualStyleTunings, randomVisualStyleNumber } from '../../utils/randomVisualStyle';
 
-// src/services/randomVisualStyle.ts
+// src/components/visualizer/randomVisualStyle.ts
 // A manual draw becomes ordinary persisted settings, unchanged by later song transitions.
 
 /** Randomize renderer settings, optionally including common appearance and shell backgrounds. */

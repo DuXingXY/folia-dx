@@ -12,6 +12,15 @@ describe('Visual Settings Import and Export', () => {
         expect(decompressConfig(compressConfig(config))).toEqual(config);
     });
 
+    it.each([true, false])('imports standalone minified randomization scope %s from decoded JSON and shortcode', randomizeAllEnabled => {
+        const config = { randomizeAllEnabled };
+        const shortcode = compressConfig(config);
+        expect(decompressConfig(shortcode)).toEqual(config);
+
+        const decodedJson = atob(shortcode.slice('folia-theme://'.length));
+        expect(decompressConfig(decodedJson)).toEqual(config);
+    });
+
     it('leaves the randomization scope absent in older configurations', () => {
         const config = { visualizerMode: 'classic' };
         expect(decompressConfig(JSON.stringify(config))).not.toHaveProperty('randomizeAllEnabled');

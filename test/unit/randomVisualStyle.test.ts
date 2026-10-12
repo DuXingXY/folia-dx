@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { randomizeVisualStyle } from '@/services/randomVisualStyle';
+import { randomizeVisualStyle } from '@/components/visualizer/randomVisualStyle';
 import { useDesktopSettingsStore } from '@/stores/useDesktopSettingsStore';
 import { useMotionSettingsStore } from '@/stores/useMotionSettingsStore';
 import { useThemeSettingsStore } from '@/stores/useThemeSettingsStore';

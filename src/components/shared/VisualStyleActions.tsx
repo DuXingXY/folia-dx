@@ -2,7 +2,7 @@ import React from 'react';
 import { Shuffle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Theme } from '../../types';
-import { randomizeVisualStyle } from '../../services/randomVisualStyle';
+import { randomizeVisualStyle } from '../visualizer/randomVisualStyle';
 import { useVisualizerSettingsStore } from '../../stores/useVisualizerSettingsStore';
 import { settingsToggleOffClassFor } from '../modal/settings/settingsCardClasses';
 
