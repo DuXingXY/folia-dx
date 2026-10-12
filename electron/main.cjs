@@ -2539,13 +2539,16 @@ async function setDesktopLyricMode(enabled) {
     return false;
   }
 
-  // Enter with controls available. Click-through remains an independent lock, so unlocking
-  // does not turn off the transparent, always-on-top desktop presentation.
+  // Keep the window interactive during a rebuild, then enter with click-through enabled.
+  // Unlocking remains independent of the transparent, always-on-top desktop presentation.
   setMainWindowClickThroughEnabled(false);
   setMainWindowAlwaysOnTop(nextEnabled);
   persistMainWindowSkipTaskbarEnabled(nextEnabled);
   if (isTransparentPlayerBackgroundEnabled() !== nextEnabled) {
     await setMainWindowTransparentModeFromRemote(nextEnabled);
+  }
+  if (nextEnabled) {
+    setMainWindowClickThroughEnabled(true);
   }
   return nextEnabled;
 }

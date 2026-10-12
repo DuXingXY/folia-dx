@@ -74,7 +74,7 @@ function createHarness(initial: Partial<Presentation> = {}, waitForRebuild?: () 
 }
 
 describe('desktop lyric mode', () => {
-  it('enters an already transparent window without locking mouse interaction or rebuilding it', async () => {
+  it('enables click-through by default in an already transparent window without rebuilding it', async () => {
     const harness = createHarness({ transparent: true });
 
     expect(await harness.preset.setDesktopLyricMode(true)).toBe(true);
@@ -82,13 +82,14 @@ describe('desktop lyric mode', () => {
       ['click-through', false],
       ['always-on-top', true],
       ['skip-taskbar', true],
+      ['click-through', true],
     ]);
     expect(harness.setTransparent).not.toHaveBeenCalled();
-    expect(harness.state.mainWindowClickThroughEnabled).toBe(false);
+    expect(harness.state.mainWindowClickThroughEnabled).toBe(true);
     expect(harness.preset.isDesktopLyricModeActive()).toBe(true);
   });
 
-  it('unlocks before rebuilding for transparency and stays interactive after the rebuild completes', async () => {
+  it('unlocks during the transparency rebuild and enables click-through after it completes', async () => {
     let finishRebuild!: () => void;
     const rebuild = new Promise<void>(resolve => { finishRebuild = resolve; });
     const harness = createHarness({}, () => rebuild);
@@ -110,7 +111,15 @@ describe('desktop lyric mode', () => {
 
     finishRebuild();
     expect(await entering).toBe(true);
-    expect(harness.setClickThrough).toHaveBeenCalledExactlyOnceWith(false);
+    expect(harness.calls).toEqual([
+      ['click-through', false],
+      ['always-on-top', true],
+      ['skip-taskbar', true],
+      ['transparent', true],
+      ['click-through', true],
+    ]);
+    expect(harness.setClickThrough).toHaveBeenCalledTimes(2);
+    expect(harness.state.mainWindowClickThroughEnabled).toBe(true);
     expect(harness.state.transparent).toBe(true);
     expect(harness.preset.isDesktopLyricModeActive()).toBe(true);
   });
