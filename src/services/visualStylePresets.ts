@@ -9,6 +9,8 @@ import { useDesktopSettingsStore } from '../stores/useDesktopSettingsStore';
 import { resolveReducedMotion, useMotionSettingsStore } from '../stores/useMotionSettingsStore';
 import { getRandomLyricsStyleCandidates } from '../utils/randomLyricsStyle';
 import { restoreUploadedLyricsFont } from './customLyricsFont';
+import { freezeManualVisualStyle } from './manualVisualStyle';
+import { normalizeFoliumParamsPayload, useFoliumParamStore } from '../mods/folium/paramStore';
 import { normalizeFontFamilyStack, normalizeFontWeight } from '../utils/fontStacks';
 import { mergeUrlBackgroundList, sanitizeUrlBackgroundList } from '../utils/urlBackground';
 import {
@@ -17,7 +19,7 @@ import {
 } from '../utils/randomVisualStyle';
 import {
     VISUAL_STYLE_TYPOGRAPHY_KEYS, VISUAL_STYLE_VISUALIZER_KEYS,
-    type VisualStyleSnapshot, type VisualStyleTypographySettings, type VisualStyleVisualizerSettings,
+    type VisualStyleFoliumParams, type VisualStyleSnapshot, type VisualStyleTypographySettings, type VisualStyleVisualizerSettings,
 } from '../types/visualStylePresets';
 
 // src/services/visualStylePresets.ts
@@ -40,12 +42,24 @@ const families = (value: unknown): string[] => normalizeFontFamilyStack(Array.is
 // Folium entries register after eager store initialization; retain their namespaced IDs in saved snapshots.
 const isSavedModMode = (value: unknown): value is string => typeof value === 'string'
     && /^mod:[a-z0-9][a-z0-9-]*:[a-z0-9][a-z0-9-]*$/.test(value);
+const isVisualFoliumScope = (scope: string): boolean => /^(visualizer|background|tuning):.+$/.test(scope);
+const visualFoliumParams = (raw: unknown): VisualStyleFoliumParams => Object.fromEntries(
+    Object.entries(normalizeFoliumParamsPayload(raw)).filter(([scope]) => isVisualFoliumScope(scope)),
+);
+
+/** Replace visual values as a group so fields reset since capture return to their saved defaults. */
+const applyFoliumParams = (saved: VisualStyleFoliumParams): void => {
+    const state = useFoliumParamStore.getState();
+    const unrelated = Object.fromEntries(Object.entries(state.byScope).filter(([scope]) => !isVisualFoliumScope(scope)));
+    state.replaceAll({ ...unrelated, ...clone(saved) });
+};
 
 export const captureVisualStyle = (): VisualStyleSnapshot => clone({
     version: 1,
     visualizer: pick(useVisualizerSettingsStore.getState(), VISUAL_STYLE_VISUALIZER_KEYS),
     typography: pick(useTypographySettingsStore.getState(), VISUAL_STYLE_TYPOGRAPHY_KEYS),
     useCoverColorBg: useThemeSettingsStore.getState().useCoverColorBg,
+    foliumParams: visualFoliumParams(useFoliumParamStore.getState().byScope),
 });
 
 /** Persisted presets are untrusted: copy recognized fields and validate their types before applying. */
@@ -75,6 +89,7 @@ export const normalizeVisualStyleSnapshot = (value: unknown): VisualStyleSnapsho
         return clone({
             version: 1,
             useCoverColorBg: boolean(raw.useCoverColorBg, false),
+            ...(raw.foliumParams === undefined ? {} : { foliumParams: visualFoliumParams(raw.foliumParams) }),
             visualizer: {
                 ...normalizeVisualStyleTunings(v), visualizerMode: mode, visualizerBackgroundMode: backgroundMode,
                 visualizerOpacity: number(v.visualizerOpacity, 1, 0.2, 1), backgroundOpacity: number(v.backgroundOpacity, 0.75, 0, 1),
@@ -111,6 +126,7 @@ export const getVisualStyleFingerprint = (snapshot: VisualStyleSnapshot): string
     const selectedUrl = snapshot.visualizer.urlBackgroundList.find(item => item.id === snapshot.visualizer.urlBackgroundSelectedId);
     return JSON.stringify(sort({
         ...snapshot,
+        foliumParams: visualFoliumParams(snapshot.foliumParams),
         visualizer: {
             ...snapshot.visualizer,
             urlBackgroundList: selectedUrl ? [{ id: selectedUrl.id, url: selectedUrl.url }] : [],
@@ -121,7 +137,7 @@ export const getVisualStyleFingerprint = (snapshot: VisualStyleSnapshot): string
 const applyLyricsAnimation = (v: VisualStyleVisualizerSettings, automatic = false): void => {
     const state = useVisualizerSettingsStore.getState();
     const assets = useVisualizerAssetStore.getState();
-    // The manual setter also protects this song from a pending automatic choice without disabling per-song random.
+    // Manual operations freeze automatic randomization before this setter; automatic choices preserve the saved mode.
     if (automatic) state.handleSetAutomaticVisualizerMode(v.visualizerMode);
     else state.handleSetVisualizerMode(v.visualizerMode, { notify: false });
     state.handleSetClassicTuning(v.classicTuning);
@@ -151,7 +167,9 @@ const applyVisualizer = (v: VisualStyleVisualizerSettings, automatic = false): v
     state.handleSetBackgroundOpacity(v.backgroundOpacity);
     state.handleToggleDisableVisualizerVignette(v.disableVisualizerVignette);
     state.handleToggleDisableVisualizerGeometricBackground(v.disableVisualizerGeometricBackground);
-    state.handleSetUrlBackgroundList(mergeUrlBackgroundList(state.urlBackgroundList, v.urlBackgroundList));
+    // Old v1 favorites stored the entire pool; only their selected resource belongs to this appearance.
+    const selectedUrl = v.urlBackgroundList.find(item => item.id === v.urlBackgroundSelectedId);
+    state.handleSetUrlBackgroundList(mergeUrlBackgroundList(state.urlBackgroundList, selectedUrl ? [selectedUrl] : []));
     state.handleSetUrlBackgroundSelectedId(v.urlBackgroundSelectedId);
     if (v.visualizerBackgroundMode === null) state.handleResetVisualizerBackgroundMode();
     else state.handleSetVisualizerBackgroundMode(v.visualizerBackgroundMode === 'url' && v.urlBackgroundList.length === 0 ? 'common' : v.visualizerBackgroundMode);
@@ -200,6 +218,7 @@ const applyTypography = (t: VisualStyleTypographySettings, includeSubtitles: boo
 export const applyVisualStyle = (snapshot: VisualStyleSnapshot): void => {
     const safe = normalizeVisualStyleSnapshot(snapshot);
     if (!safe) return;
+    freezeManualVisualStyle();
     // Missing mods affect only this application; the favorite keeps its original IDs for a later reload.
     const visualizer = {
         ...safe.visualizer,
@@ -212,6 +231,7 @@ export const applyVisualStyle = (snapshot: VisualStyleSnapshot): void => {
     applyVisualizer(visualizer);
     applyTypography(safe.typography, true);
     useThemeSettingsStore.getState().handleToggleCoverColorBg(safe.useCoverColorBg);
+    if (safe.foliumParams !== undefined) applyFoliumParams(safe.foliumParams);
 };
 
 /** Lyrics scope applies only renderer settings; all scope also applies common settings and backgrounds. */
@@ -220,6 +240,7 @@ export const randomizeVisualStyle = ({ scope = 'all', mode, automatic = false }:
     mode?: VisualizerMode;
     automatic?: boolean;
 } = {}): VisualStyleSnapshot => {
+    if (!automatic) freezeManualVisualStyle();
     const snapshot = captureVisualStyle();
     snapshot.visualizer.urlBackgroundList = sanitizeUrlBackgroundList(snapshot.visualizer.urlBackgroundList);
     const assets = useVisualizerAssetStore.getState();

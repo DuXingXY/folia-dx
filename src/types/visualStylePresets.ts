@@ -24,9 +24,13 @@ export const VISUAL_STYLE_TYPOGRAPHY_KEYS = [
 export type VisualStyleVisualizerSettings = Pick<VisualizerSettingsState, typeof VISUAL_STYLE_VISUALIZER_KEYS[number]>;
 export type VisualStyleTypographySettings = Pick<TypographySettingsState, typeof VISUAL_STYLE_TYPOGRAPHY_KEYS[number]>;
 
+export type VisualStyleFoliumParams = Record<string, Record<string, unknown>>;
+
 export interface VisualStyleSnapshot {
     version: 1;
     visualizer: VisualStyleVisualizerSettings;
     typography: VisualStyleTypographySettings;
     useCoverColorBg: boolean;
+    /** Optional for existing v1 favorites; stores only visualizer, background and tuning scopes. */
+    foliumParams?: VisualStyleFoliumParams;
 }

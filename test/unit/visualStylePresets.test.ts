@@ -9,9 +9,21 @@ import { useMotionSettingsStore } from '@/stores/useMotionSettingsStore';
 import { useDesktopSettingsStore } from '@/stores/useDesktopSettingsStore';
 import { VISUALIZER_REGISTRY } from '@/components/visualizer/registry';
 import { VISUALIZER_BACKGROUND_REGISTRY } from '@/components/visualizer/backgrounds/registry';
+import { createFoliumParamAccess, flushFoliumParamsSave, useFoliumParamStore } from '@/mods/folium/paramStore';
+import { clearAdaptiveLyricsPreparations, consumeAdaptiveLyricsStyle, prepareAdaptiveLyricsStyle } from '@/services/adaptiveLyricsPrefetch';
+import { useVisualStyleFingerprint } from '@/hooks/useVisualStyleFingerprint';
 
 // test/unit/visualStylePresets.test.ts
 // Real setting actions verify complete preset restoration and the subtitle boundary of all-random.
+
+const externalStore = vi.hoisted(() => ({ subscribe: null as null | ((listener: () => void) => () => void) }));
+vi.mock('react', async (importOriginal) => ({
+    ...await importOriginal<typeof import('react')>(),
+    useSyncExternalStore: (subscribe: (listener: () => void) => () => void, read: () => unknown) => {
+        externalStore.subscribe = subscribe;
+        return read();
+    },
+}));
 
 vi.mock('@/components/visualizer/registry', () => ({
     VISUALIZER_REGISTRY: ['classic', 'cadenza', 'partita', 'fume', 'cappella', 'tilt', 'claddagh', 'monet', 'diorama', 'pendolo', 'sonnet', 'tempera', 'lumiere', 'still'].map(mode => ({ mode })),
@@ -32,12 +44,14 @@ const resetStores = () => {
     useAdaptiveLyricsStore.setState(useAdaptiveLyricsStore.getInitialState(), true);
     useMotionSettingsStore.setState(useMotionSettingsStore.getInitialState(), true);
     useDesktopSettingsStore.setState(useDesktopSettingsStore.getInitialState(), true);
+    useFoliumParamStore.setState({ byScope: {} });
+    clearAdaptiveLyricsPreparations();
 };
 const subtitleFields = (snapshot: ReturnType<typeof captureVisualStyle>) => Object.fromEntries(Object.entries(snapshot.typography).filter(([key]) => !key.startsWith('lyrics')));
 
 describe('visual style presets', () => {
     beforeEach(resetStores);
-    afterEach(() => vi.restoreAllMocks());
+    afterEach(() => { flushFoliumParamsSave(); vi.restoreAllMocks(); });
 
     it('captures live mode and independent copies of nested tuning/font/url arrays', () => {
         useVisualizerSettingsStore.setState({ visualizerMode: 'tilt', manualVisualizerMode: 'classic', urlBackgroundList: [{ id: 'url-a', url: 'https://example.com/', note: 'a' }], urlBackgroundSelectedId: 'url-a' });
@@ -52,8 +66,11 @@ describe('visual style presets', () => {
         expect(useTypographySettingsStore.getState().lyricsFontFallbackFamilies).toEqual(['Example Font']);
     });
 
-    it('randomizes every tuning group and mode while preserving every subtitle/harmony field and the per-song switch', () => {
+    it('randomizes every tuning group and mode while preserving subtitles and freezing per-song choices', () => {
         useVisualizerSettingsStore.setState({ randomVisualizerModePerSong: true });
+        useAdaptiveLyricsStore.setState({ enabled: true, activeSongKey: 'local:song', selection: { mode: 'tilt', animationIntensity: 'normal' } });
+        const context = { availableModes: ['classic', 'tilt'] as const, currentMode: 'classic' as const };
+        prepareAdaptiveLyricsStyle({ songKey: 'local:next', context });
         useTypographySettingsStore.setState({
             subtitleContentMode: 'both', showSubtitleTranslation: true, subtitleFontStyle: 'serif', subtitleFontScale: 1.3,
             subtitleFontWeight: 530, subtitleFontFamily: 'Example Subtitle Font', subtitleFontFallbackFamilies: ['Fallback'],
@@ -65,7 +82,9 @@ describe('visual style presets', () => {
         const after = randomizeVisualStyle();
         expect(after.visualizer.visualizerMode).not.toBe(before.visualizer.visualizerMode);
         expect(subtitleFields(after)).toEqual(subtitleFields(before));
-        expect(useVisualizerSettingsStore.getState().randomVisualizerModePerSong).toBe(true);
+        expect(useVisualizerSettingsStore.getState().randomVisualizerModePerSong).toBe(false);
+        expect(useAdaptiveLyricsStore.getState()).toMatchObject({ enabled: false, activeSongKey: null, manualSongKey: null, selection: null });
+        expect(consumeAdaptiveLyricsStyle('local:next', context)).toBeNull();
         vi.spyOn(Math, 'random').mockReturnValue(0.8);
         const alternate = randomizeVisualStyle();
         for (const key of Object.keys(after.visualizer).filter(key => key.endsWith('Tuning'))) {
@@ -93,10 +112,9 @@ describe('visual style presets', () => {
         useTypographySettingsStore.getState().handleToggleShowHarmonySubtitle(false);
         applyVisualStyle(saved);
         expect(captureVisualStyle()).toEqual(saved);
-        expect(useVisualizerSettingsStore.getState().randomVisualizerModePerSong).toBe(true);
+        expect(useVisualizerSettingsStore.getState().randomVisualizerModePerSong).toBe(false);
         expect(useVisualizerSettingsStore.getState().visualizerFrameRate).toBe(90);
-        expect(useAdaptiveLyricsStore.getState().enabled).toBe(true);
-        expect(useAdaptiveLyricsStore.getState().manualSongKey).toBe('local:song');
+        expect(useAdaptiveLyricsStore.getState()).toMatchObject({ enabled: false, activeSongKey: null, manualSongKey: null, selection: null });
     });
 
     it('lyrics scope changes animations while preserving common settings, backgrounds and the complete typography snapshot', () => {
@@ -132,11 +150,20 @@ describe('visual style presets', () => {
 
     it.each(['lyrics', 'all'] as const)('automatic %s random uses the prepared renderer without overriding the current song or saved mode', (scope) => {
         useAdaptiveLyricsStore.setState({ enabled: true, activeSongKey: 'local:song', manualSongKey: null, selection: { mode: 'tilt', animationIntensity: 'normal' } });
-        useVisualizerSettingsStore.setState({ visualizerMode: 'classic', manualVisualizerMode: 'partita' });
+        useVisualizerSettingsStore.setState({ visualizerMode: 'classic', manualVisualizerMode: 'partita', randomVisualizerModePerSong: true });
         const result = randomizeVisualStyle({ scope, mode: 'tilt', automatic: true });
         expect(result.visualizer.visualizerMode).toBe('tilt');
         expect(useVisualizerSettingsStore.getState().manualVisualizerMode).toBe('partita');
-        expect(useAdaptiveLyricsStore.getState()).toMatchObject({ manualSongKey: null, selection: { mode: 'tilt' } });
+        expect(useVisualizerSettingsStore.getState().randomVisualizerModePerSong).toBe(true);
+        expect(useAdaptiveLyricsStore.getState()).toMatchObject({ enabled: true, activeSongKey: 'local:song', manualSongKey: null, selection: { mode: 'tilt' } });
+    });
+
+    it('does not stop automatic choices for an invalid favorite', () => {
+        useAdaptiveLyricsStore.setState({ enabled: true, activeSongKey: 'local:song', selection: { mode: 'tilt', animationIntensity: 'normal' } });
+        useVisualizerSettingsStore.setState({ randomVisualizerModePerSong: true });
+        applyVisualStyle({ version: 2 } as never);
+        expect(useVisualizerSettingsStore.getState().randomVisualizerModePerSong).toBe(true);
+        expect(useAdaptiveLyricsStore.getState()).toMatchObject({ enabled: true, activeSongKey: 'local:song', selection: { mode: 'tilt' } });
     });
 
     it('keeps later saved background URLs when applying an older favorite', () => {
@@ -150,6 +177,123 @@ describe('visual style presets', () => {
         expect(applied.visualizer.urlBackgroundList).toEqual([a, b]);
         expect(applied.visualizer.urlBackgroundSelectedId).toBe('a');
         expect(getVisualStyleFingerprint(applied)).toBe(getVisualStyleFingerprint(saved));
+    });
+
+    it('restores only the selected URL from a v1 favorite without reverting other resources', () => {
+        const a = { id: 'a', url: 'https://a.example/', note: 'A' };
+        const b = { id: 'b', url: 'https://b.example/', note: 'B' };
+        const c = { id: 'c', url: 'https://c.example/', note: 'C' };
+        useVisualizerSettingsStore.setState({ urlBackgroundList: [a, b], urlBackgroundSelectedId: 'a', visualizerBackgroundMode: 'url' });
+        const saved = captureVisualStyle();
+        delete saved.foliumParams;
+        const editedB = { ...b, url: 'https://new-b.example/', note: 'Edited B' };
+        useVisualizerSettingsStore.setState({ urlBackgroundList: [editedB, c], urlBackgroundSelectedId: 'b' });
+        applyVisualStyle(saved);
+        expect(useVisualizerSettingsStore.getState().urlBackgroundList).toEqual([editedB, c, a]);
+        expect(useVisualizerSettingsStore.getState().urlBackgroundSelectedId).toBe('a');
+        expect(getVisualStyleFingerprint(captureVisualStyle())).toBe(getVisualStyleFingerprint(saved));
+    });
+
+    it('does not restore or revert unselected URLs when the favorite has no selected resource', () => {
+        const a = { id: 'a', url: 'https://a.example/', note: 'A' };
+        useVisualizerSettingsStore.setState({ urlBackgroundList: [a], urlBackgroundSelectedId: null });
+        const saved = captureVisualStyle();
+        const edited = { ...a, url: 'https://edited.example/' };
+        useVisualizerSettingsStore.setState({ urlBackgroundList: [edited], urlBackgroundSelectedId: 'a' });
+        applyVisualStyle(saved);
+        expect(useVisualizerSettingsStore.getState().urlBackgroundList).toEqual([edited]);
+        expect(useVisualizerSettingsStore.getState().urlBackgroundSelectedId).toBeNull();
+    });
+
+    it('captures independent copies of Folium visual scopes and excludes business settings', () => {
+        useFoliumParamStore.setState({ byScope: {
+            'visualizer:example:lyrics': { speed: 2 },
+            'background:example:sky': { color: 'red' },
+            'tuning:example:classic': { glow: true },
+            'settings:example:account': { token: 'not-an-appearance' },
+            'command:example:export': { output: '/private/folder' },
+        } });
+        const saved = captureVisualStyle();
+        expect(saved.foliumParams).toEqual({
+            'visualizer:example:lyrics': { speed: 2 },
+            'background:example:sky': { color: 'red' },
+            'tuning:example:classic': { glow: true },
+        });
+        saved.foliumParams!['visualizer:example:lyrics'].speed = 9;
+        expect(useFoliumParamStore.getState().byScope['visualizer:example:lyrics'].speed).toBe(2);
+    });
+
+    it('replaces Folium visual values and restores reset/default fields without reverting business settings', () => {
+        const schema = [
+            { key: 'speed', type: 'number' as const, label: {}, defaultValue: 1 },
+            { key: 'glow', type: 'boolean' as const, label: {}, defaultValue: false },
+        ];
+        const lyrics = createFoliumParamAccess('visualizer:example:lyrics', schema);
+        const background = createFoliumParamAccess('background:example:sky', schema);
+        const tuning = createFoliumParamAccess('tuning:example:classic', schema);
+        lyrics.set({ speed: 2 });
+        tuning.set({ glow: true });
+        useFoliumParamStore.getState().setValues('settings:example:account', { enabled: false });
+        const saved = captureVisualStyle();
+        lyrics.reset();
+        lyrics.set({ speed: 9, glow: true });
+        background.set({ speed: 7 });
+        tuning.reset();
+        useFoliumParamStore.getState().setValues('settings:example:account', { enabled: true });
+        applyVisualStyle(saved);
+        expect(lyrics.get()).toEqual({ speed: 2, glow: false });
+        expect(background.get()).toEqual({ speed: 1, glow: false });
+        expect(tuning.get()).toEqual({ speed: 1, glow: true });
+        expect(useFoliumParamStore.getState().byScope['settings:example:account']).toEqual({ enabled: true });
+        expect(captureVisualStyle()).toEqual(saved);
+    });
+
+    it('keeps Folium values unchanged when applying an older v1 snapshot without the optional field', () => {
+        const legacy = captureVisualStyle();
+        delete legacy.foliumParams;
+        useFoliumParamStore.setState({ byScope: { 'visualizer:example:lyrics': { speed: 4 }, 'settings:example:account': { enabled: true } } });
+        const current = useFoliumParamStore.getState().byScope;
+        expect(normalizeVisualStyleSnapshot(legacy)).toEqual(legacy);
+        applyVisualStyle(legacy);
+        expect(useFoliumParamStore.getState().byScope).toBe(current);
+    });
+
+    it('normalizes optional Folium scopes without retaining corrupt or business-scope entries', () => {
+        const raw = { ...captureVisualStyle(), foliumParams: {
+            'visualizer:example:lyrics': { speed: 4 }, 'background:example:sky': [],
+            'tuning:example:classic': null, 'visualizer:': { bad: true },
+            'settings:example:account': { enabled: false },
+        } };
+        expect(normalizeVisualStyleSnapshot(raw)?.foliumParams).toEqual({ 'visualizer:example:lyrics': { speed: 4 } });
+    });
+
+    it('tracks Folium visual parameter changes in fingerprints and ignores business scopes', () => {
+        const before = getVisualStyleFingerprint(captureVisualStyle());
+        useFoliumParamStore.getState().setValues('settings:example:account', { enabled: true });
+        expect(getVisualStyleFingerprint(captureVisualStyle())).toBe(before);
+        useFoliumParamStore.getState().setValues('visualizer:example:lyrics', { speed: 4 });
+        const visual = getVisualStyleFingerprint(captureVisualStyle());
+        expect(visual).not.toBe(before);
+        useFoliumParamStore.getState().resetScope('visualizer:example:lyrics');
+        expect(getVisualStyleFingerprint(captureVisualStyle())).toBe(before);
+    });
+
+    it('notifies the favorite fingerprint hook only when visual values actually change', () => {
+        useVisualStyleFingerprint();
+        const listener = vi.fn();
+        const unsubscribe = externalStore.subscribe!(listener);
+        try {
+            useFoliumParamStore.getState().setValues('settings:example:account', { enabled: true });
+            expect(listener).not.toHaveBeenCalled();
+            useFoliumParamStore.getState().setValues('visualizer:example:lyrics', { speed: 4 });
+            expect(listener).toHaveBeenCalledTimes(1);
+            useFoliumParamStore.getState().setValues('visualizer:example:lyrics', { speed: 4 });
+            expect(listener).toHaveBeenCalledTimes(1);
+            useFoliumParamStore.getState().resetScope('visualizer:example:lyrics');
+            expect(listener).toHaveBeenCalledTimes(2);
+        } finally {
+            unsubscribe();
+        }
     });
 
     it('retains saved mod IDs before startup registration and applies their original modes after registration', () => {

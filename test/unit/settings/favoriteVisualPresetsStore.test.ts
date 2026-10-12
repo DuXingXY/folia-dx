@@ -40,6 +40,19 @@ describe('favorite visual presets', () => {
         expect(restored.getState().nextNumber).toBe(2);
     });
 
+    it('persists optional Folium parameters independently and distinguishes different visual values', async () => {
+        const store = await load();
+        const saved = { ...snapshot(), foliumParams: { 'visualizer:example:lyrics': { speed: 2 } } };
+        const id = store.getState().save(saved);
+        saved.foliumParams['visualizer:example:lyrics'].speed = 4;
+        expect(store.getState().presets[0].snapshot.foliumParams).toEqual({ 'visualizer:example:lyrics': { speed: 2 } });
+        expect(store.getState().save(saved)).not.toBe(id);
+        vi.resetModules();
+        expect((await load()).getState().presets.map(preset => preset.snapshot.foliumParams)).toEqual([
+            { 'visualizer:example:lyrics': { speed: 2 } }, { 'visualizer:example:lyrics': { speed: 4 } },
+        ]);
+    });
+
     it('reuses an existing favorite and persists removal', async () => {
         const store = await load();
         const first = store.getState().save(snapshot());
@@ -48,6 +61,91 @@ describe('favorite visual presets', () => {
         store.getState().remove(first);
         vi.resetModules();
         expect((await load()).getState().presets).toEqual([]);
+    });
+
+    it('persists a renamed favorite without changing its appearance, identity or selection', async () => {
+        const store = await load();
+        const firstId = store.getState().save(snapshot());
+        store.getState().save(snapshot('tilt'), 'Another favorite');
+        store.getState().clearCurrent(snapshot());
+        const before = store.getState();
+        const first = before.presets[0];
+        const second = before.presets[1];
+        setItem.mockClear();
+
+        expect(before.rename(firstId, '夜行歌词')).toBe(true);
+        const after = store.getState();
+        expect(after.presets[0]).toEqual({ ...first, name: '夜行歌词' });
+        expect(after.presets[0].snapshot).toBe(first.snapshot);
+        expect(after.presets[1]).toBe(second);
+        expect(after.nextNumber).toBe(before.nextNumber);
+        expect(after.dismissedFingerprint).toBe(before.dismissedFingerprint);
+        expect(setItem).toHaveBeenCalledTimes(1);
+        expect(JSON.parse(storage.get(key)!)).toEqual({ version: 1, presets: after.presets, nextNumber: before.nextNumber });
+
+        vi.resetModules();
+        const restored = (await load()).getState();
+        expect(restored.presets).toEqual(after.presets);
+        expect(restored.nextNumber).toBe(before.nextNumber);
+    });
+
+    it('trims names and accepts the same name without notifying or rewriting storage', async () => {
+        const store = await load();
+        const id = store.getState().save(snapshot());
+        expect(store.getState().rename(id, '  夜行歌词\t ')).toBe(true);
+        expect(store.getState().presets[0].name).toBe('夜行歌词');
+        const before = store.getState();
+        const listener = vi.fn();
+        const unsubscribe = store.subscribe(listener);
+        setItem.mockClear();
+
+        expect(before.rename(id, '\t夜行歌词  ')).toBe(true);
+        expect(store.getState()).toBe(before);
+        expect(listener).not.toHaveBeenCalled();
+        expect(setItem).not.toHaveBeenCalled();
+        unsubscribe();
+    });
+
+    it.each(['', ' \t\r\n ', '　'])('rejects a blank name %j without changing favorites or storage', async (name) => {
+        const store = await load();
+        const id = store.getState().save(snapshot());
+        store.getState().clearCurrent(snapshot());
+        const before = store.getState();
+        const persisted = storage.get(key);
+        setItem.mockClear();
+
+        expect(before.rename(id, name)).toBe(false);
+        expect(store.getState()).toBe(before);
+        expect(storage.get(key)).toBe(persisted);
+        expect(setItem).not.toHaveBeenCalled();
+    });
+
+    it('rejects an unknown favorite without changing favorites or storage', async () => {
+        const store = await load();
+        store.getState().save(snapshot());
+        const before = store.getState();
+        const persisted = storage.get(key);
+        setItem.mockClear();
+
+        expect(before.rename('missing', 'A new name')).toBe(false);
+        expect(store.getState()).toBe(before);
+        expect(storage.get(key)).toBe(persisted);
+        expect(setItem).not.toHaveBeenCalled();
+    });
+
+    it('renames an existing version 1 backup without changing its sequence or snapshot', async () => {
+        const preset = { id: 'old-favorite', name: 'Preset 7', createdAt: 12, snapshot: snapshot() };
+        storage.set(key, JSON.stringify({ version: 1, presets: [preset], nextNumber: 8 }));
+        const store = await load();
+        expect(store.getState().rename(preset.id, 'My original favorite')).toBe(true);
+
+        vi.resetModules();
+        const restoredStore = await load();
+        const restored = restoredStore.getState();
+        expect(restored.presets).toEqual([{ ...preset, name: 'My original favorite' }]);
+        expect(restored.nextNumber).toBe(8);
+        expect(restored.save(snapshot('tilt'))).not.toBe(preset.id);
+        expect(restoredStore.getState().presets[1].name).toBe('Preset 8');
     });
 
     it('recovers from corrupt or unreadable browser storage', async () => {
