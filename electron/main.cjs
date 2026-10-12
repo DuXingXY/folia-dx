@@ -2527,7 +2527,7 @@ function setMainWindowAlwaysOnTop(enabled) {
 }
 
 function isDesktopLyricModeActive() {
-  return mainWindowClickThroughEnabled
+  return !isWallpaperModeEnabled()
     && mainWindowAlwaysOnTop
     && isTransparentPlayerBackgroundEnabled()
     && mainWindowSkipTaskbarEnabled;
@@ -2539,16 +2539,13 @@ async function setDesktopLyricMode(enabled) {
     return false;
   }
 
-  // The preset has no state of its own: it only applies one exact combination of independent
-  // window switches. Drop click-through before a possible window rebuild, then reapply it last.
+  // Enter with controls available. Click-through remains an independent lock, so unlocking
+  // does not turn off the transparent, always-on-top desktop presentation.
   setMainWindowClickThroughEnabled(false);
   setMainWindowAlwaysOnTop(nextEnabled);
   persistMainWindowSkipTaskbarEnabled(nextEnabled);
   if (isTransparentPlayerBackgroundEnabled() !== nextEnabled) {
     await setMainWindowTransparentModeFromRemote(nextEnabled);
-  }
-  if (nextEnabled) {
-    setMainWindowClickThroughEnabled(true);
   }
   return nextEnabled;
 }
