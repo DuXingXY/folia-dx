@@ -45,6 +45,7 @@ interface ControllerOptions {
 }
 
 interface Controller {
+  prepareEntry: (options?: { clearClickThrough?: () => void; onUnavailable?: () => void }) => boolean;
   attach: () => string;
   detach: () => void;
   killHelper: () => void;
@@ -157,6 +158,40 @@ describe('parseHelperEventLine', () => {
   });
 });
 
+describe('wallpaper entry preflight', () => {
+  it('cancels missing-helper entry before replacing the normal window or unlocking it', () => {
+    const { controller, store, children, onDegrade } = createHarness({ helperPath: () => null });
+    const clearClickThrough = vi.fn();
+    const onUnavailable = vi.fn();
+    const recreateWindow = vi.fn();
+
+    if (controller.prepareEntry({ clearClickThrough, onUnavailable })) recreateWindow();
+
+    expect(store.get(WALLPAPER_MODE_SETTING_KEY)).toBe(false);
+    expect(clearClickThrough).not.toHaveBeenCalled();
+    expect(recreateWindow).not.toHaveBeenCalled();
+    expect(onUnavailable).toHaveBeenCalledOnce();
+    expect(onDegrade).not.toHaveBeenCalled();
+    expect(controller.attach()).toBe('disabled');
+    expect(children).toHaveLength(0);
+  });
+
+  it('unlocks a desktop-lyrics overlay before building the wallpaper window', () => {
+    const { controller, store } = createHarness();
+    let clickThrough = true;
+    const recreatedWith: boolean[] = [];
+    const onUnavailable = vi.fn();
+
+    if (controller.prepareEntry({ clearClickThrough: () => { clickThrough = false; }, onUnavailable })) {
+      recreatedWith.push(clickThrough);
+    }
+
+    expect(recreatedWith).toEqual([false]);
+    expect(store.get(WALLPAPER_MODE_SETTING_KEY)).toBe(true);
+    expect(onUnavailable).not.toHaveBeenCalled();
+  });
+});
+
 describe('attach lifecycle', () => {
   it('spawns the helper with the parsed hwnd and default-on flags', () => {
     const { controller, spawnArgs } = createHarness();
@@ -177,9 +212,28 @@ describe('attach lifecycle', () => {
     expect(spawnArgs[0]).not.toContain('--forward-mouse');
   });
 
-  it('reports missing helper without spawning', () => {
-    const { controller, children } = createHarness({ helperPath: () => null });
+  it('recovers a missing helper through the normal-window degradation callback without spawning', () => {
+    const { controller, children, store, onDegrade } = createHarness({ helperPath: () => null });
     expect(controller.attach()).toBe('missing');
+    expect(children).toHaveLength(0);
+    expect(controller.isDegraded()).toBe(true);
+    expect(store.get(WALLPAPER_MODE_SETTING_KEY)).toBe(false);
+    expect(onDegrade).toHaveBeenCalledOnce();
+    expect(controller.attach()).toBe('disabled');
+    expect(onDegrade).toHaveBeenCalledOnce();
+  });
+
+  it('recovers when the helper disappears between preflight and native attachment', () => {
+    let helperAvailable = true;
+    const { controller, store, children, onDegrade } = createHarness({
+      helperPath: () => helperAvailable ? 'C:\\fake\\folia-wallpaper-helper.exe' : null,
+    });
+    expect(controller.prepareEntry()).toBe(true);
+    helperAvailable = false;
+
+    expect(controller.attach()).toBe('missing');
+    expect(store.get(WALLPAPER_MODE_SETTING_KEY)).toBe(false);
+    expect(onDegrade).toHaveBeenCalledOnce();
     expect(children).toHaveLength(0);
   });
 
