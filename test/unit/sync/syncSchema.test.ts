@@ -73,6 +73,18 @@ describe('sync schema parsing', () => {
         expect(parse('triple')).toBeUndefined();
     });
 
+    it('accepts boolean selection preferences without inventing values for old payloads', () => {
+        const parse = (data: Record<string, unknown>) => parseSyncedSettingsRecord({
+            schemaVersion: 1, updatedAt: '2026-07-08T00:00:00.000Z', data,
+        })?.data;
+        expect(parse({ adaptiveLyricsEnabled: true, randomizeAllEnabled: true, randomVisualizerModePerSong: false })).toEqual({
+            adaptiveLyricsEnabled: true, randomizeAllEnabled: true, randomVisualizerModePerSong: false,
+        });
+        expect(parse({ adaptiveLyricsEnabled: 'false', randomizeAllEnabled: 'false', randomVisualizerModePerSong: 1 })).toEqual({});
+        expect(parse({ visualizerMode: 'classic' })).not.toHaveProperty('adaptiveLyricsEnabled');
+        expect(parse({ visualizerMode: 'classic' })).not.toHaveProperty('randomizeAllEnabled');
+    });
+
     it('migrates the deprecated carousel home layout to grid', () => {
         const record = parseSyncedSettingsRecord({
             schemaVersion: 1,

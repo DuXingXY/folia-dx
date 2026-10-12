@@ -69,6 +69,9 @@ export const ACTIVATE_CUSTOM_THEME_KEY = 'activateCustomTheme';
 // plan can never promise a change that will not happen.
 const FIELD_GROUPS: Record<string, ImportGroup> = {
     visualizerMode: 'visualizer',
+    adaptiveLyricsEnabled: 'visualizer',
+    randomizeAllEnabled: 'visualizer',
+    favoriteVisualPresets: 'visualizer',
     randomVisualizerModePerSong: 'visualizer',
     visualizerOpacity: 'visualizer',
     hidePlayerTranslationSubtitle: 'visualizer',

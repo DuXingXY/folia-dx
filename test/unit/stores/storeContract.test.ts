@@ -94,7 +94,9 @@ describe('store contract', () => {
         const ALLOWED: Record<string, string[]> = {
             // Clearing a monet/cappella asset has to fall its tuning back, so the settings store
             // drives the asset store. The reverse edge is deliberately absent: it would close a cycle.
-            useVisualizerSettingsStore: ['useVisualizerAssetStore'],
+            // Manual mode selection locks this song; random mode disables adaptive selection.
+            // Adaptive lyrics imports no visualizer store, keeping the direction acyclic.
+            useVisualizerSettingsStore: ['useVisualizerAssetStore', 'useAdaptiveLyricsStore'],
             // Turning off "remember home card position" has to drop the positions already kept,
             // so the settings store drives the position store. Same shape as the edge above, and
             // the reverse edge is likewise absent: the position store imports no store at all.

@@ -37,6 +37,16 @@ describe('buildImportPlan', () => {
         expect(keys(p)).toEqual(['visualizerMode']);
     });
 
+    it('offers favorite preset backups and the random-style preference in the import confirmation', () => {
+        const favoriteVisualPresets = [{ id: 'saved-1', name: 'Preset 1', snapshot: { version: 1 } }];
+        const p = plan({ favoriteVisualPresets, adaptiveLyricsEnabled: true, randomizeAllEnabled: true }, { favoriteVisualPresets: [], adaptiveLyricsEnabled: false, randomizeAllEnabled: false });
+        expect(p.changes).toEqual(expect.arrayContaining([
+            expect.objectContaining({ key: 'favoriteVisualPresets', group: 'visualizer', to: favoriteVisualPresets }),
+            expect.objectContaining({ key: 'adaptiveLyricsEnabled', group: 'visualizer', to: true }),
+            expect.objectContaining({ key: 'randomizeAllEnabled', group: 'visualizer', to: true }),
+        ]));
+    });
+
     it('plans the system theme preference as a theme setting', () => {
         const p = plan({ followSystemTheme: true }, { followSystemTheme: false }, unpinned);
         expect(p.changes).toContainEqual(expect.objectContaining({

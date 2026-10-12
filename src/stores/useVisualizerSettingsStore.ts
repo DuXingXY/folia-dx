@@ -21,6 +21,7 @@ import { LUMIERE_TUNING_STORAGE_KEY, VISUALIZER_OPACITY_STORAGE_KEY, clampCladda
 import { getStoredBoolean, setStoredBoolean } from './storagePrimitives';
 import { useVisualizerAssetStore } from './useVisualizerAssetStore';
 import { normalizeLumiereTuning } from '../utils/lumiereTuning';
+import { useAdaptiveLyricsStore } from './useAdaptiveLyricsStore';
 
 export type VisualizerSettingsState = {
     disableVisualizerVignette: boolean;
@@ -32,6 +33,8 @@ export type VisualizerSettingsState = {
     urlBackgroundSelectedId: string | null;
     visualizerFrameRate: VisualizerFrameRate;
     visualizerMode: VisualizerMode;
+    /** The listener's persisted choice, separate from the current automatic presentation. */
+    manualVisualizerMode: VisualizerMode;
     randomVisualizerModePerSong: boolean;
     /** Snap animated glow blur radii to a bounded set. See components/visualizer/wordGlow.ts. */
     glowBlurQuantize: boolean;
@@ -65,6 +68,7 @@ export type VisualizerSettingsState = {
     handleSetUrlBackgroundList: (items: UrlBackgroundItem[]) => void;
     handleSetVisualizerFrameRate: (frameRate: VisualizerFrameRate) => void;
     handleSetVisualizerMode: (mode: VisualizerMode, options?: { notify?: boolean }) => void;
+    handleSetAutomaticVisualizerMode: (mode: VisualizerMode) => void;
     handleToggleRandomVisualizerModePerSong: (enable: boolean) => void;
     handleToggleGlowBlurQuantize: (enable: boolean) => void;
     handleSetClassicTuning: (patch: Partial<ClassicTuning>) => void;
@@ -121,6 +125,7 @@ export const useVisualizerSettingsStore = create<VisualizerSettingsState>((set, 
     urlBackgroundSelectedId: readStoredUrlBackgroundSelectedId(),
     visualizerFrameRate: readStoredVisualizerFrameRate(),
     visualizerMode: readStoredVisualizerMode(),
+    manualVisualizerMode: readStoredVisualizerMode(),
     randomVisualizerModePerSong: getStoredBoolean('random_visualizer_mode_per_song', false),
     glowBlurQuantize: readStoredGlowBlurQuantize(),
     classicTuning: readStoredClassicTuning(),
@@ -254,7 +259,8 @@ export const useVisualizerSettingsStore = create<VisualizerSettingsState>((set, 
         if (typeof window !== 'undefined') {
             localStorage.setItem('visualizer_mode', mode);
         }
-        set({ visualizerMode: mode });
+        useAdaptiveLyricsStore.getState().overrideAdaptiveSong();
+        set({ visualizerMode: mode, manualVisualizerMode: mode });
         if (options?.notify !== false) {
             setStatusMessage({
                 type: 'info',
@@ -264,7 +270,9 @@ export const useVisualizerSettingsStore = create<VisualizerSettingsState>((set, 
             });
         }
     },
+    handleSetAutomaticVisualizerMode: (mode) => set({ visualizerMode: mode }),
     handleToggleRandomVisualizerModePerSong: (enable) => {
+        if (enable) useAdaptiveLyricsStore.getState().handleToggleAdaptiveLyrics(false);
         setStoredBoolean('random_visualizer_mode_per_song', enable);
         set({ randomVisualizerModePerSong: enable });
         setStatusMessage({

@@ -3,6 +3,7 @@
 exports[`store contract > keeps every localStorage key the stores read or write 1`] = `
 [
   "active_online_provider_id",
+  "adaptive_lyrics_enabled",
   "audio_output_device_id",
   "auto_hide_player_chrome",
   "background_opacity",
@@ -19,6 +20,7 @@ exports[`store contract > keeps every localStorage key the stores read or write 
   "disable_home_dynamic_background",
   "enable_home_dynamic_background",
   "enable_media_cache",
+  "favorite_visual_presets",
   "folia.personalFm.selection",
   "folia_auto_play_on_launch",
   "folia_automix_enabled",
@@ -112,6 +114,7 @@ exports[`store contract > keeps every localStorage key the stores read or write 
   "prevent_display_sleep_during_playback",
   "queue_add_behavior",
   "queue_palette_keep_open",
+  "randomize_all_enabled",
   "reduce_motion_collectionMorph",
   "reduce_motion_follow_system",
   "reduce_motion_lattice",

@@ -103,6 +103,7 @@ import { usePlaybackTransportController } from './hooks/usePlaybackTransportCont
 import { useLocalLibraryCatalog } from './hooks/useLocalLibraryCatalog';
 import { usePlaybackVisualizerBridge } from './hooks/usePlaybackVisualizerBridge';
 import { useRandomVisualizerMode } from './hooks/useRandomVisualizerMode';
+import { useAdaptiveLyrics } from './hooks/useAdaptiveLyrics';
 import { useObsBrowserSourcePublisher } from './hooks/useObsBrowserSourcePublisher';
 import { useLyricApiPublisher } from './hooks/useLyricApiPublisher';
 import { useSessionRestoreController } from './hooks/useSessionRestoreController';
@@ -480,9 +481,10 @@ export default function App() {
         onModeChange: showPlayerChromeVisibilityModeStatus,
     });
 
+    const adaptiveLyrics = useAdaptiveLyrics({ wallpaperMode });
     useRandomVisualizerMode({
         currentSong,
-        enabled: randomVisualizerModePerSong,
+        enabled: randomVisualizerModePerSong && !adaptiveLyrics.enabled,
         visualizerMode,
         setVisualizerMode: handleSetVisualizerMode,
     });

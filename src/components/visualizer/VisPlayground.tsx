@@ -60,6 +60,7 @@ import VisPlaygroundPreviewHotspots, { type VisPlaygroundEditSection } from './V
 import VisPlaygroundSettingsPanel from './VisPlaygroundSettingsPanel';
 import type { VisualizerBackgroundActions, VisualizerBackgroundConfig } from './backgrounds/definition';
 import { useVisPlaygroundPreviewPlayback } from './useVisPlaygroundPreviewPlayback';
+import VisualStyleActions from '../shared/VisualStyleActions';
 
 interface VisPlaygroundProps {
     theme?: Theme;
@@ -640,7 +641,7 @@ const VisPlayground: React.FC<VisPlaygroundProps> = ({
 
     const visualizerEntry = getVisualizerRegistryEntry(visualizerMode);
     const modeLabel = getVisualizerModeLabel(visualizerMode, t);
-    const hotspotLabels = useMemo<Record<Exclude<VisPlaygroundEditSection, 'common'>, string>>(() => ({
+    const hotspotLabels = useMemo<Record<Exclude<VisPlaygroundEditSection, 'common' | 'favorites'>, string>>(() => ({
         background: t('options.previewBackgroundHotspot'),
         visualizer: t('options.previewVisualizerHotspot'),
         subtitle: t('options.previewSubtitleHotspot'),
@@ -1161,8 +1162,8 @@ const VisPlayground: React.FC<VisPlaygroundProps> = ({
                 data-ponder="vis-playground"
                 className={`mx-auto flex h-full max-w-[1600px] flex-col overflow-hidden rounded-[32px] border ${borderColor} ${glassBg} shadow-[0_24px_80px_rgba(0,0,0,0.28)]`}
             >
-                <div className="flex items-center justify-between border-b border-white/10 px-4 py-4 sm:px-6">
-                    <div className="flex items-center gap-3 min-w-0">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-6">
+                    <div className="flex min-w-[200px] flex-1 items-center gap-3">
                         <button
                             type="button"
                             onClick={onClose}
@@ -1177,6 +1178,12 @@ const VisPlayground: React.FC<VisPlaygroundProps> = ({
                             </div>
                         </div>
                     </div>
+                    <VisualStyleActions
+                        theme={previewTheme}
+                        isDaylight={isDaylight}
+                        onBeforeRandomize={handleSliderCommit}
+                        onBeforeFavorite={handleSliderCommit}
+                    />
                 </div>
 
                 <div className="grid min-h-0 flex-1 gap-4 p-4 sm:p-6 lg:grid-cols-[minmax(0,1.25fr)_360px]">
@@ -1248,6 +1255,34 @@ const VisPlayground: React.FC<VisPlaygroundProps> = ({
                     <VisPlaygroundSettingsPanel
                         activeSection={activeEditSection}
                         onSectionChange={setActiveEditSection}
+                        onBeforeApplyFavorite={snapshot => {
+                            isDraggingSlider.current = false;
+                            pendingCommitRef.current = null;
+                            // Reset uncommitted drafts even when a favorite equals the persisted values.
+                            const v = snapshot.visualizer;
+                            const typography = snapshot.typography;
+                            setDraftBackgroundOpacity(v.backgroundOpacity);
+                            setDraftVisualizerOpacity(v.visualizerOpacity);
+                            setDraftSubtitleOverlayOpacity(typography.subtitleOverlayOpacity);
+                            setDraftFontScale(typography.lyricsFontScale);
+                            setDraftSubtitleFontScale(typography.subtitleFontScale);
+                            setDraftFontWeight(typography.lyricsFontWeight);
+                            setDraftSubtitleFontWeight(typography.subtitleFontWeight);
+                            setDraftClassicTuning(v.classicTuning);
+                            setDraftPartitaTuning(v.partitaTuning);
+                            setDraftFumeTuning(v.fumeTuning);
+                            setDraftCladdaghTuning(v.claddaghTuning);
+                            setDraftTiltTuning(v.tiltTuning);
+                            setDraftDioramaTuning(v.dioramaTuning);
+                            setDraftMonetBackgroundTuning(v.monetBackgroundTuning);
+                            setDraftNomandBackgroundTuning(v.nomandBackgroundTuning);
+                            setDraftLatentBackgroundTuning(v.latentBackgroundTuning);
+                            setDraftMonetTuning(v.monetTuning);
+                            setDraftPendoloTuning(v.pendoloTuning);
+                            setDraftSonnetTuning(v.sonnetTuning);
+                            setDraftTemperaTuning(v.temperaTuning);
+                            setDraftLumiereTuning(v.lumiereTuning);
+                        }}
                         t={t}
                         isDaylight={isDaylight}
                         theme={previewTheme}

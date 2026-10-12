@@ -2,6 +2,7 @@
 
 exports[`config surface contract > keeps every field of the exportable visual config 1`] = `
 [
+  "adaptiveLyricsEnabled",
   "backgroundOpacity",
   "cadenzaTuning",
   "cappellaTuning",
@@ -32,6 +33,7 @@ exports[`config surface contract > keeps every field of the exportable visual co
   "partitaTuning",
   "pendoloTuning",
   "randomVisualizerModePerSong",
+  "randomizeAllEnabled",
   "showHarmonySubtitle",
   "showSubtitleTranslation",
   "songThemeAutoGenerateEnabled",
@@ -67,6 +69,7 @@ exports[`config surface contract > keeps every field of the exportable visual co
 
 exports[`config surface contract > keeps every field of the synced visual settings document 1`] = `
 [
+  "adaptiveLyricsEnabled",
   "backgroundOpacity",
   "cadenzaTuning",
   "cappellaTuning",
@@ -90,6 +93,7 @@ exports[`config surface contract > keeps every field of the synced visual settin
   "partitaTuning",
   "pendoloTuning",
   "randomVisualizerModePerSong",
+  "randomizeAllEnabled",
   "showSubtitleTranslation",
   "sonnetTuning",
   "soraBackgroundTuning",

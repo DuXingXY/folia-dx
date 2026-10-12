@@ -297,11 +297,24 @@ describe('Visual Settings Import and Export', () => {
         ['disableVisualizerGeometricBackground', true],
         ['disableVisualizerVignette', true],
         ['staticMode', true],
+        ['adaptiveLyricsEnabled', true],
+        ['adaptiveLyricsEnabled', false],
+        ['randomizeAllEnabled', true],
+        ['randomizeAllEnabled', false],
         ['subtitleOverlayOpacity', 0.45],
     ])('round-trips the standalone %s field', (key, value) => {
         const decoded = decompressConfig(compressConfig({ [key]: value }));
 
         expect(decoded[key]).toBe(value);
+    });
+
+    it('recognizes random preferences in both JSON shapes and leaves old configs unchanged', () => {
+        expect(decompressConfig('{"adaptiveLyricsEnabled":false}')).toEqual({ adaptiveLyricsEnabled: false });
+        expect(decompressConfig('{"ale":true}')).toEqual({ adaptiveLyricsEnabled: true });
+        expect(decompressConfig('{"randomizeAllEnabled":false}')).toEqual({ randomizeAllEnabled: false });
+        expect(decompressConfig('{"rae":true}')).toEqual({ randomizeAllEnabled: true });
+        expect(decompressConfig(compressConfig({ visualizerMode: 'classic' }))).not.toHaveProperty('adaptiveLyricsEnabled');
+        expect(decompressConfig(compressConfig({ visualizerMode: 'classic' }))).not.toHaveProperty('randomizeAllEnabled');
     });
 
     it('round-trips Sonnet tuning through the renderer tuning bundle', () => {
@@ -401,6 +414,15 @@ describe('Visual Settings Import and Export', () => {
         const decoded = decompressConfig(compressConfig({ temperaTuning }));
 
         expect(decoded.temperaTuning).toEqual(temperaTuning);
+    });
+
+    it('round-trips favorite presets in both shortcodes and JSON', () => {
+        const favoriteVisualPresets = [{
+            id: 'favorite-1', name: 'Preset 1', createdAt: 1,
+            snapshot: { version: 1, visualizer: { visualizerMode: 'tilt' }, typography: { subtitleFontScale: 1.2 }, useCoverColorBg: true },
+        }];
+        expect(decompressConfig(compressConfig({ favoriteVisualPresets })).favoriteVisualPresets).toEqual(favoriteVisualPresets);
+        expect(decompressConfig(JSON.stringify({ favoriteVisualPresets })).favoriteVisualPresets).toEqual(favoriteVisualPresets);
     });
 
     it('gracefully throws error on invalid configuration input strings', () => {

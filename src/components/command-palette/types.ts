@@ -382,6 +382,12 @@ export type CommandPaletteVisualizerContext = {
     visualizerBackgroundMode: VisualizerBackgroundMode | null;
     setVisualizerMode: (mode: VisualizerMode) => void;
     toggleRandomVisualizerModePerSong: () => void;
+    adaptiveLyricsEnabled: boolean;
+    randomizeAllEnabled: boolean;
+    handleToggleRandomizeAll: (enabled: boolean) => void;
+    toggleAdaptiveLyrics: () => void;
+    requestAnotherAdaptiveStyle: () => void;
+    toggleFavoriteVisualPreset: () => void;
     /** Lab > Fix lyric animation freeze on Linux: the Linux renderer fd leak workaround. */
     toggleGlowBlurQuantize: () => void;
     setVisualizerBackgroundMode: (mode: VisualizerBackgroundMode) => void;

@@ -37,6 +37,7 @@ import { useLyricSegmentationStore } from '../stores/useLyricSegmentationStore';
 import { useLatticeSettingsStore } from '../stores/useLatticeSettingsStore';
 import { useInteractionSettingsStore } from '../stores/useInteractionSettingsStore';
 import type { LyricSegmentationActions } from '../components/app/playback/createLyricSegmentationActions';
+import { useAdaptiveLyricsStore } from '../stores/useAdaptiveLyricsStore';
 
 // src/hooks/useCommandPaletteContext.ts
 // Assembles the command palette's namespaced context.
@@ -138,6 +139,8 @@ export const useCommandPaletteContext = (
         visualizerBackgroundMode: state.visualizerBackgroundMode,
         randomVisualizerModePerSong: state.randomVisualizerModePerSong,
     })));
+    const adaptiveLyricsEnabled = useAdaptiveLyricsStore(state => state.enabled);
+    const randomizeAllEnabled = useAdaptiveLyricsStore(state => state.randomizeAllEnabled);
     // Read through getState() by the builder, so the subscription has to be here or the command
     // would keep the answer it had when the context was last built.
     const canAddCurrentSongToPlaylist = useAddToPlaylistStore(state => state.availability.canAdd);
@@ -209,7 +212,7 @@ export const useCommandPaletteContext = (
         ambient,
         queuePaletteKeepOpen,
         settingsSignals, chromeSignals, desktopSignals, automixSignals,
-        sleepTimerSignals, latticeSignals, audioSignals, visualizerSignals,
+        sleepTimerSignals, latticeSignals, audioSignals, visualizerSignals, adaptiveLyricsEnabled, randomizeAllEnabled,
         lyricStaffPolicy, lyricStaffAbsorbMode, personalFmSelection, view, commandFilter, gridSurface, directorySurface, artistSurface, suiteChrome, canAddCurrentSongToPlaylist,
         lyricSegmentationRecord, lyricSegmentationActions, latticeFocusAction,
     ]);

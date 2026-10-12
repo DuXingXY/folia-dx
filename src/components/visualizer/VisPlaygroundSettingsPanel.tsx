@@ -38,6 +38,8 @@ import {
     VISUALIZER_BACKGROUND_REGISTRY,
 } from './backgrounds/registry';
 import { usePlayerChromeSettingsStore } from '../../stores/usePlayerChromeSettingsStore';
+import FavoriteVisualPresetsPanel from './FavoriteVisualPresetsPanel';
+import type { VisualStyleSnapshot } from '../../services/visualStylePresets';
 
 // src/components/visualizer/VisPlaygroundSettingsPanel.tsx
 // Right-side settings panel for the click-to-edit visualizer playground.
@@ -166,6 +168,7 @@ interface VisPlaygroundSettingsPanelProps {
     onResetSubtitleSettings?: () => void;
     onSliderPointerDown?: () => void;
     onSliderCommit?: () => void;
+    onBeforeApplyFavorite?: (snapshot: VisualStyleSnapshot) => void;
 }
 
 // Modes that size their own lyrics: the generic font-size controls are disabled and this notice explains why.
@@ -175,12 +178,13 @@ const LYRICS_FONT_SIZE_AUTO_NOTICE_KEYS: Partial<Record<string, string>> = {
     lumiere: 'options.lumiereFontSizeAutoNotice',
 };
 
-const SECTION_OPTIONS: VisPlaygroundEditSection[] = ['common', 'background', 'visualizer', 'subtitle'];
+const SECTION_OPTIONS: VisPlaygroundEditSection[] = ['common', 'background', 'visualizer', 'subtitle', 'favorites'];
 
 const getSectionLabel = (section: VisPlaygroundEditSection, t: (key: string) => string) => {
     if (section === 'common') return t('options.previewCommonSettings');
     if (section === 'background') return t('options.previewBackgroundSettings');
     if (section === 'subtitle') return t('options.previewSubtitleSettings');
+    if (section === 'favorites') return t('options.favoriteVisualPresets');
     return t('options.previewVisualizerSettings');
 };
 
@@ -300,15 +304,16 @@ const SectionTabs: React.FC<Pick<VisPlaygroundSettingsPanelProps, 'activeSection
     theme,
     isDaylight,
 }) => (
-    <div className="inline-flex w-fit items-center gap-1 rounded-full p-1" style={{ backgroundColor: colorWithAlpha(theme.backgroundColor, isDaylight ? 0.34 : 0.52) }}>
+    <div className="flex min-w-0 shrink-0 items-center gap-1 overflow-x-auto rounded-full p-1 custom-scrollbar" style={{ backgroundColor: colorWithAlpha(theme.backgroundColor, isDaylight ? 0.34 : 0.52) }}>
         {SECTION_OPTIONS.map(section => {
             const active = activeSection === section;
             return (
                 <button
                     key={section}
                     type="button"
+                    aria-pressed={active}
                     onClick={() => onSectionChange(section)}
-                    className="rounded-full border px-3 py-1.5 text-sm transition-all"
+                    className="shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm transition-all"
                     style={{
                         ...getAccentOptionStyle(active, theme, isDaylight),
                         color: active ? theme.primaryColor : theme.secondaryColor,
@@ -482,6 +487,14 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
             />
 
             <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-4">
+                {activeSection === 'favorites' && (
+                    <FavoriteVisualPresetsPanel
+                        theme={theme}
+                        isDaylight={isDaylight}
+                        controlCardBg={controlCardBg}
+                        onBeforeApply={props.onBeforeApplyFavorite}
+                    />
+                )}
                 {activeSection === 'common' && (
                     <div className="rounded-[24px] border p-4 space-y-4" style={{ backgroundColor: controlCardBg, borderColor: colorWithAlpha(theme.secondaryColor, 0.16) }}>
                         <div className="flex items-start justify-between gap-3">

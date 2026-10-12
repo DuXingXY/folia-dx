@@ -5,6 +5,9 @@ import { useVideoLayerSettingsStore } from '../../../stores/useVideoLayerSetting
 import { getVisualizerRegistryEntry } from '../../visualizer/registry';
 import { isLyricSegmentationAiAvailable } from '../../../services/lyricSegmentationAi';
 import type { LyricSegmentationActions } from '../playback/createLyricSegmentationActions';
+import { useAdaptiveLyricsStore } from '../../../stores/useAdaptiveLyricsStore';
+import { captureVisualStyle, getVisualStyleFingerprint, randomizeVisualStyle } from '../../../services/visualStylePresets';
+import { findFavoriteVisualPreset, useFavoriteVisualPresetsStore } from '../../../stores/useFavoriteVisualPresetsStore';
 
 // src/components/app/command-palette-context/buildVisualizerCommandContext.ts
 // The `visualizer` namespace. Almost entirely store-backed: App.tsx used to relay all seven
@@ -21,6 +24,26 @@ export const buildVisualizerCommandContext = (
         toggleRandomVisualizerModePerSong: () => visualizer.handleToggleRandomVisualizerModePerSong(
             !useVisualizerSettingsStore.getState().randomVisualizerModePerSong,
         ),
+        adaptiveLyricsEnabled: useAdaptiveLyricsStore.getState().enabled,
+        randomizeAllEnabled: useAdaptiveLyricsStore.getState().randomizeAllEnabled,
+        handleToggleRandomizeAll: enabled => useAdaptiveLyricsStore.getState().handleToggleRandomizeAll(enabled),
+        toggleAdaptiveLyrics: () => {
+            const adaptive = useAdaptiveLyricsStore.getState();
+            adaptive.handleToggleAdaptiveLyrics(!adaptive.enabled);
+        },
+        requestAnotherAdaptiveStyle: () => {
+            const scope = useAdaptiveLyricsStore.getState().randomizeAllEnabled ? 'all' : 'lyrics';
+            const snapshot = randomizeVisualStyle({ scope });
+            useFavoriteVisualPresetsStore.getState().clearCurrent(snapshot);
+        },
+        toggleFavoriteVisualPreset: () => {
+            const snapshot = captureVisualStyle();
+            const favorites = useFavoriteVisualPresetsStore.getState();
+            const existing = favorites.dismissedFingerprint !== getVisualStyleFingerprint(snapshot)
+                ? findFavoriteVisualPreset(snapshot, favorites.presets) : undefined;
+            if (existing) favorites.remove(existing.id);
+            else favorites.save(snapshot);
+        },
         toggleGlowBlurQuantize: () => visualizer.handleToggleGlowBlurQuantize(
             !useVisualizerSettingsStore.getState().glowBlurQuantize,
         ),

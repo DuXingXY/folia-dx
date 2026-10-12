@@ -7,6 +7,7 @@ import { useThemeSettingsStore, type ThemeSettingsState } from '../../stores/use
 import type { SyncedSettingsRecord, SyncedVisualSettings } from './syncTypes';
 import { SYNC_SCHEMA_VERSION } from './syncTypes';
 import { applyVisualizerTuningsToSettings, collectVisualizerTunings } from '../../components/visualizer/tuningRegistry';
+import { useAdaptiveLyricsStore } from '../../stores/useAdaptiveLyricsStore';
 
 // src/services/sync/settingsSnapshot.ts
 // Maps the settings stores to the syncable visual settings JSON document.
@@ -18,7 +19,13 @@ import { applyVisualizerTuningsToSettings, collectVisualizerTunings } from '../.
 /** The two stores the synced visual document spans, read as one snapshot. */
 export type SyncableSettingsState = VisualizerSettingsState
     & TypographySettingsState & LyricSettingsState
-    & HomeLayoutSettingsState & PlayerChromeSettingsState & ThemeSettingsState;
+    & HomeLayoutSettingsState & PlayerChromeSettingsState & ThemeSettingsState
+    & {
+        adaptiveLyricsEnabled: boolean;
+        randomizeAllEnabled: boolean;
+        handleToggleAdaptiveLyrics: (enabled: boolean) => void;
+        handleToggleRandomizeAll: (enabled: boolean) => void;
+    };
 
 export const readSyncableSettingsState = (): SyncableSettingsState => ({
     ...useVisualizerSettingsStore.getState(),
@@ -27,12 +34,19 @@ export const readSyncableSettingsState = (): SyncableSettingsState => ({
     ...useHomeLayoutSettingsStore.getState(),
     ...usePlayerChromeSettingsStore.getState(),
     ...useThemeSettingsStore.getState(),
+    adaptiveLyricsEnabled: useAdaptiveLyricsStore.getState().enabled,
+    randomizeAllEnabled: useAdaptiveLyricsStore.getState().randomizeAllEnabled,
+    handleToggleAdaptiveLyrics: useAdaptiveLyricsStore.getState().handleToggleAdaptiveLyrics,
+    handleToggleRandomizeAll: useAdaptiveLyricsStore.getState().handleToggleRandomizeAll,
 });
 
 export const buildSyncedVisualSettings = (state: SyncableSettingsState): SyncedVisualSettings => ({
     followSystemTheme: state.followSystemTheme,
-    visualizerMode: state.visualizerMode,
+    // Automatic presentation is song-scoped; only the listener's saved default travels.
+    visualizerMode: state.manualVisualizerMode,
     randomVisualizerModePerSong: state.randomVisualizerModePerSong,
+    adaptiveLyricsEnabled: state.adaptiveLyricsEnabled,
+    randomizeAllEnabled: state.randomizeAllEnabled,
     visualizerBackgroundMode: state.visualizerBackgroundMode,
     backgroundOpacity: state.backgroundOpacity,
     visualizerOpacity: state.visualizerOpacity,
@@ -94,6 +108,12 @@ export const applySyncedVisualSettings = (
     if (settings.followSystemTheme !== undefined) state.setFollowSystemTheme(Boolean(settings.followSystemTheme));
     if (settings.visualizerMode !== undefined) state.handleSetVisualizerMode(settings.visualizerMode);
     if (settings.randomVisualizerModePerSong !== undefined) state.handleToggleRandomVisualizerModePerSong(Boolean(settings.randomVisualizerModePerSong));
+    if (settings.randomizeAllEnabled !== undefined) state.handleToggleRandomizeAll(settings.randomizeAllEnabled);
+    if (settings.adaptiveLyricsEnabled !== undefined) {
+        // The random-style preference wins a conflicting payload; old payloads preserve its preference.
+        if (settings.adaptiveLyricsEnabled) state.handleToggleRandomVisualizerModePerSong(false);
+        state.handleToggleAdaptiveLyrics(settings.adaptiveLyricsEnabled);
+    }
     if (settings.visualizerBackgroundMode === null) {
         state.handleResetVisualizerBackgroundMode();
     } else if (settings.visualizerBackgroundMode !== undefined) {

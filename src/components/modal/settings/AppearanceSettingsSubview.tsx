@@ -38,6 +38,9 @@ import { useThemeSettingsStore } from '../../../stores/useThemeSettingsStore';
 import { useStageSettingsStore } from '../../../stores/useStageSettingsStore';
 import { useLibraryWallLookStore } from '../../../stores/useLibraryWallLookStore';
 import { isLibraryWallSeamStyle } from '../../../utils/libraryWallSeamStyle';
+import { useAdaptiveLyricsStore } from '../../../stores/useAdaptiveLyricsStore';
+import { useFavoriteVisualPresetsStore } from '../../../stores/useFavoriteVisualPresetsStore';
+import AdaptiveLyricsControls from '../../shared/AdaptiveLyricsControls';
 
 // src/components/modal/settings/AppearanceSettingsSubview.tsx
 // Visual settings subview for theme presets, lyric renderer entry, layout settings, and configurations import/export.
@@ -136,6 +139,10 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
     customTheme,
 }) => {
     const { t } = useTranslation();
+    const adaptiveLyricsEnabled = useAdaptiveLyricsStore(state => state.enabled);
+    const toggleAdaptiveLyrics = useAdaptiveLyricsStore(state => state.handleToggleAdaptiveLyrics);
+    const randomizeAllEnabled = useAdaptiveLyricsStore(state => state.randomizeAllEnabled);
+    const toggleRandomizeAll = useAdaptiveLyricsStore(state => state.handleToggleRandomizeAll);
     // OBS static URL points to this web deploy, so the copy button is web-only (no shareable URL under Electron).
     // The link follows the selected web stage source (Now Playing / PlayerCap); disabled when none is on.
     const isElectron = typeof window !== 'undefined' && Boolean((window as { electron?: unknown }).electron);
@@ -296,6 +303,9 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
             ...buildVisualSettingsConfig(),
             songThemeAutoSwitchEnabled,
             songThemeAutoGenerateEnabled,
+            adaptiveLyricsEnabled,
+            randomizeAllEnabled,
+            favoriteVisualPresets: useFavoriteVisualPresetsStore.getState().presets,
             // Mod settings and tunings (Folium param store) are visual settings too.
             ...(Object.keys(foliumParams).length > 0 ? { foliumParams } : {}),
         };
@@ -364,7 +374,7 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
             const customFont = uiStoreTypographySettings.lyricsCustomFont;
             const plan = buildImportPlan({
                 incoming: config,
-                current: { ...buildVisualSettingsConfig(), theme: customTheme ?? null },
+                current: { ...buildVisualSettingsConfig(), adaptiveLyricsEnabled, randomizeAllEnabled, favoriteVisualPresets: useFavoriteVisualPresetsStore.getState().presets, theme: customTheme ?? null },
                 switches: { isCustomThemePreferred, songThemeAutoSwitchEnabled, songThemeAutoGenerateEnabled },
                 customFontSource: customFont?.source ?? null,
                 customFontLabel: customFont?.label ?? customFont?.family ?? null,
@@ -417,6 +427,15 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
             }
             if (has('randomVisualizerModePerSong')) {
                 storeVisualizer.handleToggleRandomVisualizerModePerSong(Boolean(config.randomVisualizerModePerSong));
+            }
+            if (has('adaptiveLyricsEnabled')) {
+                toggleAdaptiveLyrics(Boolean(config.adaptiveLyricsEnabled));
+            }
+            if (has('randomizeAllEnabled')) {
+                toggleRandomizeAll(Boolean(config.randomizeAllEnabled));
+            }
+            if (has('favoriteVisualPresets')) {
+                useFavoriteVisualPresetsStore.getState().replace(config.favoriteVisualPresets);
             }
             if (has('visualizerOpacity')) {
                 storeVisualizer.handleSetVisualizerOpacity(config.visualizerOpacity);
@@ -631,6 +650,15 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
             <SettingsAnchor anchorId="lyricsRenderer" label={t('options.lyricsRenderer')}>
                 <SettingsSectionHeading icon={Monitor} label={t('options.lyricsRenderer')} />
                 <div className="space-y-3">
+                    <div className={`rounded-xl border p-4 ${settingsCardClass}`}>
+                        <AdaptiveLyricsControls
+                            showPerSongToggle
+                            enabled={adaptiveLyricsEnabled}
+                            onToggle={toggleAdaptiveLyrics}
+                            isDaylight={isDaylight}
+                            theme={theme}
+                        />
+                    </div>
                     {storePlayerChromeSettings.enablePlayerPageNativeBlur && (
                         <div className={`flex items-center gap-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs ${isDaylight ? 'text-amber-600' : 'text-amber-400'}`}>
                             <AlertTriangle size={16} className="shrink-0 text-amber-500" />

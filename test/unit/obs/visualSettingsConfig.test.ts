@@ -21,6 +21,7 @@ import { useTypographySettingsStore } from '@/stores/useTypographySettingsStore'
 import { useThemeSettingsStore } from '@/stores/useThemeSettingsStore';
 import { useStageSettingsStore } from '@/stores/useStageSettingsStore';
 import { useLibraryWallLookStore } from '@/stores/useLibraryWallLookStore';
+import { useAdaptiveLyricsStore } from '@/stores/useAdaptiveLyricsStore';
 
 const switchMock = vi.mocked(readStoredThemeAutoSwitchEnabled);
 const generateMock = vi.mocked(readStoredThemeAutoGenerateEnabled);
@@ -58,6 +59,22 @@ describe('buildVisualSettingsConfig', () => {
             songThemeAutoSwitchEnabled: true,
             songThemeAutoGenerateEnabled: true,
         });
+    });
+
+    it('exports random preferences and the saved default instead of a transient automatic style', () => {
+        const beforeVisualizer = useVisualizerSettingsStore.getState();
+        const beforeAdaptive = useAdaptiveLyricsStore.getState();
+        try {
+            useVisualizerSettingsStore.setState({ visualizerMode: 'sonnet', manualVisualizerMode: 'monet' });
+            useAdaptiveLyricsStore.setState({ enabled: true, randomizeAllEnabled: true });
+            const restored = decompressConfig(compressConfig(buildVisualSettingsConfig()));
+            expect(restored).toMatchObject({ visualizerMode: 'monet', adaptiveLyricsEnabled: true, randomizeAllEnabled: true });
+            useAdaptiveLyricsStore.setState({ enabled: false, randomizeAllEnabled: false });
+            expect(buildVisualSettingsConfig()).toMatchObject({ adaptiveLyricsEnabled: false, randomizeAllEnabled: false });
+        } finally {
+            useVisualizerSettingsStore.setState(beforeVisualizer);
+            useAdaptiveLyricsStore.setState(beforeAdaptive);
+        }
     });
 
     it('never reports auto-generate on while auto-switch is off', () => {

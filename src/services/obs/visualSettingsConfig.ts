@@ -7,6 +7,7 @@ import { useTypographySettingsStore } from '../../stores/useTypographySettingsSt
 import { useThemeSettingsStore } from '../../stores/useThemeSettingsStore';
 import { useStageSettingsStore } from '../../stores/useStageSettingsStore';
 import { useLibraryWallLookStore } from '../../stores/useLibraryWallLookStore';
+import { useAdaptiveLyricsStore } from '../../stores/useAdaptiveLyricsStore';
 
 // src/services/obs/visualSettingsConfig.ts
 // Everything compressConfig serializes except the theme. Reads the live settings store, so both
@@ -29,8 +30,11 @@ export function buildVisualSettingsConfig(): Record<string, unknown> {
     songThemeAutoGenerateEnabled,
     themeGenerationSource: readStoredThemeGenerationSource(),
     followSystemTheme: storeThemeSettings.followSystemTheme,
-    visualizerMode: storeVisualizer.visualizerMode,
+    // A shared configuration carries the saved default, not this song's transient random style.
+    visualizerMode: storeVisualizer.manualVisualizerMode,
     randomVisualizerModePerSong: storeVisualizer.randomVisualizerModePerSong,
+    adaptiveLyricsEnabled: useAdaptiveLyricsStore.getState().enabled,
+    randomizeAllEnabled: useAdaptiveLyricsStore.getState().randomizeAllEnabled,
     visualizerBackgroundMode: storeVisualizer.visualizerBackgroundMode,
     backgroundOpacity: storeVisualizer.backgroundOpacity,
     // The other three legs of background.common, alongside the opacity above. The local OBS browser

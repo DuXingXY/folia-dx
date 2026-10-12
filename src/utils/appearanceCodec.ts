@@ -503,6 +503,9 @@ export const compressConfig = (config: any): string => {
     }
     if (config.visualizerMode) minified.vm = config.visualizerMode;
     if (config.randomVisualizerModePerSong !== undefined) minified.rvms = config.randomVisualizerModePerSong;
+    if (config.adaptiveLyricsEnabled !== undefined) minified.ale = config.adaptiveLyricsEnabled;
+    if (config.randomizeAllEnabled !== undefined) minified.rae = config.randomizeAllEnabled;
+    if (config.favoriteVisualPresets !== undefined) minified.fvp = config.favoriteVisualPresets;
     if (config.visualizerBackgroundMode) minified.vbm = config.visualizerBackgroundMode;
     if (config.backgroundOpacity !== undefined) minified.bo = config.backgroundOpacity;
     if (config.useCoverColorBg !== undefined) minified.ccb = config.useCoverColorBg;
@@ -597,6 +600,8 @@ export const decompressConfig = (str: string): any => {
         || parsed.t !== undefined
         || parsed.vm !== undefined
         || parsed.rvms !== undefined
+        || parsed.ale !== undefined
+        || parsed.rae !== undefined
         || parsed.ccb !== undefined
         || parsed.dvgb !== undefined
         || parsed.dvv !== undefined
@@ -641,6 +646,9 @@ export const decompressConfig = (str: string): any => {
         }
         if (parsed.vm) decompressed.visualizerMode = parsed.vm;
         if (parsed.rvms !== undefined) decompressed.randomVisualizerModePerSong = parsed.rvms;
+        if (parsed.ale !== undefined) decompressed.adaptiveLyricsEnabled = parsed.ale;
+        if (parsed.rae !== undefined) decompressed.randomizeAllEnabled = parsed.rae;
+        if (parsed.fvp !== undefined) decompressed.favoriteVisualPresets = parsed.fvp;
         if (parsed.vbm) decompressed.visualizerBackgroundMode = parsed.vbm;
         if (parsed.bo !== undefined) decompressed.backgroundOpacity = parsed.bo;
         if (parsed.ccb !== undefined) decompressed.useCoverColorBg = parsed.ccb;
@@ -705,7 +713,7 @@ export const decompressConfig = (str: string): any => {
         return decompressed;
     } else {
         const validKeys = [
-            'theme', 'visualizerMode', 'randomVisualizerModePerSong', 'visualizerBackgroundMode', 'backgroundOpacity',
+            'theme', 'visualizerMode', 'randomVisualizerModePerSong', 'adaptiveLyricsEnabled', 'randomizeAllEnabled', 'favoriteVisualPresets', 'visualizerBackgroundMode', 'backgroundOpacity',
             'useCoverColorBg', 'disableVisualizerGeometricBackground', 'disableVisualizerVignette', 'staticMode',
             'visualizerOpacity', 'hidePlayerTranslationSubtitle', 'showSubtitleTranslation', 'subtitleContentMode',
             'subtitleOverlayBackground', 'subtitleUpcomingLyricsBlur', 'subtitleOverlayOpacity',

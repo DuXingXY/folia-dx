@@ -20,6 +20,8 @@ import ThemeSourceRow from './ThemeSourceRow';
 import { BackgroundModeGlyph, VisualizerModeGlyph } from '../../visualizer/modeGlyphs';
 import { useVisualizerSettingsStore } from '../../../stores/useVisualizerSettingsStore';
 import { useSettingsModalStore } from '../../../stores/useSettingsModalStore';
+import { useAdaptiveLyricsStore } from '../../../stores/useAdaptiveLyricsStore';
+import AdaptiveLyricsControls from '../../shared/AdaptiveLyricsControls';
 
 // src/components/panelTab/controls/AppearanceSection.tsx
 // 外观区：歌词样式、背景、主题来源三件事放在一起。
@@ -61,6 +63,8 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
 }) => {
     const { t } = useTranslation();
     const openSettings = useSettingsModalStore(state => state.openSettings);
+    const overrideAdaptiveSong = useAdaptiveLyricsStore(state => state.overrideAdaptiveSong);
+    const animationIntensity = theme.animationIntensity;
     // Only the modes whose typography is built from word segmentation get the chip; the registry
     // says which, so adding such a mode does not mean editing a list here.
     const usesWordSegmentation = Boolean(getVisualizerRegistryEntry(visualizerMode).usesWordSegmentation);
@@ -116,7 +120,8 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
     };
 
     const cycleAnimationIntensity = () => {
-        const currentIndex = ANIMATION_INTENSITIES.indexOf(theme.animationIntensity);
+        const currentIndex = ANIMATION_INTENSITIES.indexOf(animationIntensity);
+        overrideAdaptiveSong();
         onThemeChange({
             ...theme,
             animationIntensity: ANIMATION_INTENSITIES[(currentIndex + 1) % ANIMATION_INTENSITIES.length],
@@ -147,6 +152,11 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
         <div className="space-y-1">
             {/* 思索「歌词样式」的埋点：两行一起算，因为那一章讲的就是歌词和背景各选各的。 */}
             <div data-ponder="lyric-style" className="space-y-1">
+                <AdaptiveLyricsControls
+                    isDaylight={isDaylight}
+                    theme={theme}
+                    compact
+                />
                 <ModeStepperRow<VisualizerMode>
                     value={visualizerMode}
                     options={visualizerOptions}
@@ -162,8 +172,8 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                         <>
                             <QuickControlChip
                                 isDaylight={isDaylight}
-                                label={t(`animation.${theme.animationIntensity}`)}
-                                title={`${t('ui.animationIntensity')}: ${t(`animation.${theme.animationIntensity}`)}`}
+                                label={t(`animation.${animationIntensity}`)}
+                                title={`${t('ui.animationIntensity')}: ${t(`animation.${animationIntensity}`)}`}
                                 onClick={cycleAnimationIntensity}
                             />
                             {usesWordSegmentation && (

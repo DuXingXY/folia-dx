@@ -183,6 +183,12 @@ const createContext = (overrides: CommandPaletteContextOverrides = {}): CommandP
             visualizerBackgroundMode: 'latent',
             setVisualizerMode: vi.fn(),
             toggleRandomVisualizerModePerSong: vi.fn(),
+            adaptiveLyricsEnabled: false,
+            randomizeAllEnabled: false,
+            handleToggleRandomizeAll: vi.fn(),
+            toggleAdaptiveLyrics: vi.fn(),
+            requestAnotherAdaptiveStyle: vi.fn(),
+            toggleFavoriteVisualPreset: vi.fn(),
             toggleGlowBlurQuantize: vi.fn(),
             setVisualizerBackgroundMode: vi.fn(),
             setMonetBackgroundTuning: vi.fn(),
@@ -857,6 +863,25 @@ describe('command palette registry', () => {
         expect(match.command.id).toBe('visualizer-toggle-random-per-song');
         match.command.execute('', context);
         expect(context.visualizer.toggleRandomVisualizerModePerSong).toHaveBeenCalled();
+    });
+
+    it('offers random styles, a scope toggle and a manual randomization without requiring playback', () => {
+        const toggle = COMMAND_PALETTE_COMMANDS.find(command => command.id === 'visualizer-toggle-adaptive')!;
+        const next = COMMAND_PALETTE_COMMANDS.find(command => command.id === 'visualizer-adaptive-next')!;
+        const context = createContext();
+        toggle.execute('', context);
+        expect(context.visualizer.toggleAdaptiveLyrics).toHaveBeenCalled();
+        const scope = COMMAND_PALETTE_COMMANDS.find(command => command.id === 'visualizer-toggle-random-all')!;
+        scope.execute('', context);
+        expect(context.visualizer.handleToggleRandomizeAll).toHaveBeenCalledWith(true);
+        scope.execute('', createContext({ visualizer: { randomizeAllEnabled: true, handleToggleRandomizeAll: context.visualizer.handleToggleRandomizeAll } }));
+        expect(context.visualizer.handleToggleRandomizeAll).toHaveBeenLastCalledWith(false);
+        expect(next.isAvailable?.(context) ?? true).toBe(true);
+        next.execute('', context);
+        expect(context.visualizer.requestAnotherAdaptiveStyle).toHaveBeenCalled();
+        const favorite = COMMAND_PALETTE_COMMANDS.find(command => command.id === 'visualizer-favorite-preset')!;
+        favorite.execute('', context);
+        expect(context.visualizer.toggleFavoriteVisualPreset).toHaveBeenCalled();
     });
 
     it('toggles the stepped glow radius', () => {
