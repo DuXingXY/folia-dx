@@ -1864,12 +1864,12 @@ const MOD_SYSTEM_ENABLED_SETTING_KEY = 'MOD_SYSTEM_ENABLED';
 const DEFAULT_STAGE_API_PORT = 32107;
 const DEFAULT_OBS_BROWSER_SOURCE_PORT = 32108;
 const DEFAULT_LYRIC_API_PORT = 32109;
-const FOLIA_RELEASES_URL = 'https://github.com/chthollyphile/folia-major/releases';
+const FOLIA_RELEASES_URL = 'https://github.com/DuXingXY/folia-dx/releases';
 const FOLIA_GITHUB_REPOSITORY = {
-  owner: 'chthollyphile',
-  repo: 'folia-major',
+  owner: 'DuXingXY',
+  repo: 'folia-dx',
 };
-const WINDOWS_APP_USER_MODEL_ID = 'top.izuna.foliamajor';
+const WINDOWS_APP_USER_MODEL_ID = 'io.github.duxingxy.folia';
 const REMOTE_CONTROL_WINDOW_TITLE = 'Folia Remote';
 const WINDOW_PLAYBACK_HANDOFF_REQUEST_TIMEOUT_MS = 800;
 const bundledAppIconPath = path.join(__dirname, '../build/icon.png');

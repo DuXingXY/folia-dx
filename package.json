@@ -1,14 +1,14 @@
 {
-  "name": "folia-major",
-  "productName": "Folia",
-  "desktopName": "folia-major.desktop",
+  "name": "folia-dx",
+  "productName": "Folia DX",
+  "desktopName": "folia-dx.desktop",
   "description": "Lyrics Reimagine",
   "author": {
     "name": "chthollyphile",
     "email": "chthollyphile@users.noreply.github.com"
   },
   "private": true,
-  "version": "0.7.18",
+  "version": "0.7.18-dx.1",
   "license": "AGPL-3.0",
   "type": "module",
   "main": "electron/main.cjs",
@@ -60,8 +60,8 @@
     "manual:ai-probe": "node test/manual/ai_probe.mjs"
   },
   "build": {
-    "appId": "top.izuna.foliamajor",
-    "productName": "Folia",
+    "appId": "io.github.duxingxy.folia",
+    "productName": "Folia DX",
     "beforePack": "build/beforePack.cjs",
     "afterPack": "build/afterPack.cjs",
     "electronLanguages": [
@@ -76,8 +76,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "chthollyphile",
-        "repo": "folia-major"
+        "owner": "DuXingXY",
+        "repo": "folia-dx"
       }
     ],
     "files": [
@@ -157,7 +157,7 @@
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "win": {
-      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "artifactName": "Folia-DX-Setup-${version}-${arch}.${ext}",
       "target": [
         "nsis"
       ],
@@ -288,5 +288,6 @@
     "three-stdlib": {
       "fflate": "$fflate"
     }
-  }
+  },
+  "foliaReleaseChannel": "internal"
 }
