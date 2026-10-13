@@ -1,0 +1,91 @@
+name: Random style cross-platform verification
+
+# This fork-only branch validates the unchanged source commit of upstream PR #601.
+on:
+  push:
+    branches:
+      - ci/random-style-cross-platform
+
+permissions:
+  contents: read
+
+concurrency:
+  group: random-style-cross-platform-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      SOURCE_SHA: 550a65a3202fd3408efe2a2e6138115a6b8b3187
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out exact PR source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          persist-credentials: false
+
+      - name: Verify source commit
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.14.1
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium (Linux)
+        if: runner.os == 'Linux'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Chromium (macOS)
+        if: runner.os == 'macOS'
+        run: npx playwright install chromium
+
+      - name: Use installed Playwright Chromium
+        run: |
+          node --input-type=module -e 'import {appendFileSync} from "node:fs"; import {chromium} from "@playwright/test"; appendFileSync(process.env.GITHUB_ENV, "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="+chromium.executablePath()+"\n");'
+
+      - name: Record environment
+        run: |
+          mkdir -p .verification
+          node --input-type=module -e 'import {writeFileSync} from "node:fs"; import {chromium} from "@playwright/test"; const browser=await chromium.launch({headless:true}); writeFileSync(".verification/environment.json", JSON.stringify({source:process.env.SOURCE_SHA,platform:process.platform,arch:process.arch,node:process.version,chromium:browser.version()},null,2)); await browser.close();'
+          cat .verification/environment.json
+
+      - name: Run typecheck
+        run: npm run typecheck
+
+      - name: Run 121 relevant unit tests
+        run: >
+          npm run test:unit --
+          test/unit/randomVisualStyle.test.ts
+          test/unit/command-palette/commandRegistry.test.ts
+          test/unit/command-palette/commandRegistryContract.test.ts
+          test/unit/visualizer/visualSettingsImportExport.test.ts
+          --reporter=default --reporter=json --outputFile=.verification/unit-results.json
+
+      - name: Run 6 browser component tests
+        run: npm run test:component -- test/component/manualRandomStyle.spec.ts --workers=1
+
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: random-style-verification-${{ matrix.os }}
+          path: |
+            .verification/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
