@@ -14,10 +14,10 @@ export const createAdaptiveLyricsSession = ({ isCurrent, readContext, apply }: S
     let revision = 0;
     return {
         cancel: () => { revision += 1; },
-        choose(songKey: string, preparedSelection?: AdaptiveLyricsStyle | null): AdaptiveLyricsStyle | null {
+        choose(songKey: string): AdaptiveLyricsStyle | null {
             const request = ++revision;
             if (!isCurrent(songKey)) return null;
-            const selection = preparedSelection ?? chooseRandomLyricsStyle(readContext());
+            const selection = chooseRandomLyricsStyle(readContext());
             if (!selection || request !== revision || !isCurrent(songKey)) return null;
             apply(songKey, selection);
             return selection;

@@ -15,7 +15,6 @@ export type {
 
 // Central mode registry. Entries are discovered from each visualizer's local entry file.
 const visualizerEntryModules = import.meta.glob<VisualizerEntryModule>('./*/entry.tsx', { eager: true });
-const visualizerRendererModules = import.meta.glob<unknown>('./*/Visualizer*.tsx');
 
 const buildVisualizerRegistry = (modules: Record<string, VisualizerEntryModule>) => {
     const entries = Object.entries(modules).map(([path, module]) => {
@@ -76,25 +75,6 @@ export const getVisualizerPreviewStartOffset = (mode: VisualizerMode, loopDurati
 
 export const getVisualizerScopedSeed = (mode: VisualizerMode, scope: string) =>
     `${scope}-${getVisualizerRegistryEntry(mode).previewSeed}`;
-
-const visualizerPreloadPromises = new Map<VisualizerMode, Promise<unknown>>();
-
-/** Loads only the selected renderer chunk; it does not mount a canvas or create a GPU runtime. */
-export const preloadVisualizerMode = (mode: VisualizerMode): Promise<unknown> => {
-    const existing = visualizerPreloadPromises.get(mode);
-    if (existing) return existing;
-
-    const path = Object.keys(visualizerRendererModules).find(candidate => candidate.startsWith(`./${mode}/`));
-    const loader = path ? visualizerRendererModules[path] : undefined;
-    const promise = loader
-        ? loader().catch(error => {
-            visualizerPreloadPromises.delete(mode);
-            throw error;
-        })
-        : Promise.resolve(undefined);
-    visualizerPreloadPromises.set(mode, promise);
-    return promise;
-};
 
 /*
  * Runtime contribution channel for mod visualizers (src/mods/folium/registries/visualizers).

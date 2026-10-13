@@ -3,7 +3,7 @@ import i18n from '../i18n/config';
 import { getVisualStyleFingerprint, normalizeVisualStyleSnapshot, type VisualStyleSnapshot } from '../services/visualStylePresets';
 
 // src/stores/useFavoriteVisualPresetsStore.ts
-// Favorite appearance snapshots survive restarts; the current random result stays session-local.
+// Favorite appearance snapshots survive restarts; the favorite highlight dismissal stays session-local.
 export const FAVORITE_VISUAL_PRESETS_STORAGE_KEY = 'favorite_visual_presets';
 
 export interface FavoriteVisualPreset {
@@ -18,6 +18,7 @@ interface FavoriteVisualPresetsState {
     nextNumber: number;
     dismissedFingerprint: string | null;
     save: (snapshot: VisualStyleSnapshot, name?: string) => string;
+    rename: (id: string, name: string) => boolean;
     remove: (id: string) => void;
     replace: (presets: unknown) => void;
     clear: () => void;
@@ -92,6 +93,18 @@ export const useFavoriteVisualPresetsStore = create<FavoriteVisualPresetsState>(
         persistFavorites(presets, nextNumber);
         set({ presets, nextNumber, dismissedFingerprint: null });
         return id;
+    },
+    rename: (id, name) => {
+        const normalizedName = name.trim();
+        if (!normalizedName) return false;
+        const state = get();
+        const existing = state.presets.find(preset => preset.id === id);
+        if (!existing) return false;
+        if (existing.name === normalizedName) return true;
+        const presets = state.presets.map(preset => preset.id === id ? { ...preset, name: normalizedName } : preset);
+        persistFavorites(presets, state.nextNumber);
+        set({ presets });
+        return true;
     },
     remove: (id) => {
         const state = get();

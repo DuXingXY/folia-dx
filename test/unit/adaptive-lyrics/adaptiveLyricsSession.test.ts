@@ -45,15 +45,6 @@ describe('random lyrics session', () => {
         expect(apply).not.toHaveBeenCalled();
     });
 
-    it('applies the preloaded choice without drawing again', () => {
-        const apply = vi.fn();
-        const context = vi.fn(readContext);
-        const session = createAdaptiveLyricsSession({ isCurrent: () => true, readContext: context, apply });
-        const prepared = { mode: 'monet' as const, animationIntensity: 'normal' as const };
-        expect(session.choose('song', prepared)).toBe(prepared);
-        expect(context).not.toHaveBeenCalled();
-    });
-
     it('preserves the existing display when no renderer is available', () => {
         const apply = vi.fn();
         const session = createAdaptiveLyricsSession({ isCurrent: () => true, readContext: () => ({ availableModes: [] }), apply });

@@ -1,6 +1,8 @@
 import React, { useLayoutEffect, useState } from 'react';
 import AdaptiveLyricsControls from '../../src/components/shared/AdaptiveLyricsControls';
+import FavoriteVisualPresetsPanel from '../../src/components/visualizer/FavoriteVisualPresetsPanel';
 import { useAdaptiveLyrics } from '../../src/hooks/useAdaptiveLyrics';
+import { useRandomVisualizerMode } from '../../src/hooks/useRandomVisualizerMode';
 import { useAdaptiveLyricsStore } from '../../src/stores/useAdaptiveLyricsStore';
 import { useVisualizerSettingsStore } from '../../src/stores/useVisualizerSettingsStore';
 import { useTypographySettingsStore } from '../../src/stores/useTypographySettingsStore';
@@ -8,6 +10,7 @@ import { useThemeSettingsStore } from '../../src/stores/useThemeSettingsStore';
 import { captureVisualStyle } from '../../src/services/visualStylePresets';
 import { selectDisplayLyrics, selectDisplaySong, usePlaybackStore } from '../../src/stores/usePlaybackStore';
 import { DEFAULT_THEME } from '../../src/services/baseThemes';
+import { PlayerState } from '../../src/types';
 import type { LyricData, SongResult } from '../../src/types';
 import type { ProbeDefinition } from './definition';
 
@@ -44,13 +47,15 @@ const readRuntimeAppearance = () => {
         appearance: JSON.stringify(snapshot),
         protectedSettings: JSON.stringify({ visualizer: protectedVisualizer, typography: snapshot.typography, useCoverColorBg: snapshot.useCoverColorBg }),
         rendererTunings: JSON.stringify(Object.fromEntries(RENDERER_TUNING_KEYS.map(key => [key, snapshot.visualizer[key]]))),
+        savedRendererTunings: JSON.stringify(Object.fromEntries(RENDERER_TUNING_KEYS.map(key => [key, JSON.parse(localStorage.getItem(key.replace('Tuning', '_tuning')) ?? 'null')]))),
     };
 };
 
 const RuntimeControls: React.FC = () => {
     const runtime = useAdaptiveLyrics({ wallpaperMode: false });
     const adaptive = useAdaptiveLyricsStore();
-    const visualizer = useVisualizerSettingsStore().visualizerMode;
+    const visual = useVisualizerSettingsStore();
+    const visualizer = visual.visualizerMode;
     useTypographySettingsStore();
     useThemeSettingsStore(state => state.useCoverColorBg);
     const manualMode = useVisualizerSettingsStore(state => state.manualVisualizerMode);
@@ -58,11 +63,20 @@ const RuntimeControls: React.FC = () => {
     const displaySong = usePlaybackStore(selectDisplaySong);
     const displayLyrics = usePlaybackStore(selectDisplayLyrics);
     const held = usePlaybackStore(state => state.transitionDisplay !== null);
+    const queue = usePlaybackStore(state => state.playQueue);
+    const playerState = usePlaybackStore(state => state.playerState);
+    // Match App's simultaneous hook wiring: the legacy shuffle yields while adaptive choices are enabled.
+    useRandomVisualizerMode({
+        currentSong: song,
+        enabled: visual.randomVisualizerModePerSong && !runtime.enabled,
+        visualizerMode: visualizer,
+        setVisualizerMode: visual.handleSetVisualizerMode,
+    });
     const nextSong = (hold: boolean) => {
         const current = usePlaybackStore.getState();
         const next = current.currentSong?.id === SONGS[0].id ? 1 : 0;
         usePlaybackStore.setState({
-            currentSong: SONGS[next], lyrics: LYRICS[next],
+            currentSong: SONGS[next], lyrics: LYRICS[next], playerState: PlayerState.PLAYING,
             transitionDisplay: hold ? { song: selectDisplaySong(current), lyrics: selectDisplayLyrics(current), coverUrl: null, duration: 180 } : null,
         });
     };
@@ -74,11 +88,22 @@ const RuntimeControls: React.FC = () => {
                     theme={DEFAULT_THEME}
                 />
             </div>
+            <div className="max-w-xl">
+                <FavoriteVisualPresetsPanel theme={DEFAULT_THEME} isDaylight={false} controlCardBg="rgba(255,255,255,0.05)" />
+            </div>
             <div className="flex flex-wrap gap-4 text-sm">
                 <button type="button" onClick={() => adaptive.handleToggleAdaptiveLyrics(!runtime.enabled)}>Toggle song randomization</button>
+                <button type="button" onClick={() => visual.handleToggleRandomVisualizerModePerSong(true)}>Enable legacy song randomization</button>
                 <button type="button" onClick={() => useVisualizerSettingsStore.getState().handleSetVisualizerMode('still', { notify: false })}>Manual still</button>
                 <button type="button" onClick={adaptive.requestAnotherAdaptiveStyle}>Reroll current style</button>
                 <button type="button" onClick={() => nextSong(false)}>Next song</button>
+                <button type="button" onClick={() => usePlaybackStore.setState({ playQueue: [...queue].reverse() })}>Reverse queue</button>
+                <button type="button" onClick={() => usePlaybackStore.getState().setPlayerState(PlayerState.PAUSED)}>Pause playback</button>
+                <label>
+                    Classic word spacing
+                    <input type="number" aria-label="Classic word spacing" step="0.01" value={visual.classicTuning.wordSpacing ?? 0.7}
+                        onChange={event => visual.handleSetClassicTuning({ wordSpacing: Number(event.target.value) })} />
+                </label>
                 <button type="button" disabled={held} onClick={() => nextSong(true)}>Hold incoming</button>
                 <button type="button" disabled={!held} onClick={() => usePlaybackStore.getState().setTransitionDisplay(null)}>Release hold</button>
             </div>
@@ -88,13 +113,17 @@ const RuntimeControls: React.FC = () => {
                     mode: visualizer, selection: adaptive.selection?.mode ?? '-',
                     manualSongKey: adaptive.manualSongKey ?? '-', manualVisualizerMode: manualMode,
                     savedMode: localStorage.getItem('visualizer_mode') ?? '-',
+                    savedEnabled: localStorage.getItem('adaptive_lyrics_enabled') ?? '-',
+                    savedLegacyEnabled: localStorage.getItem('random_visualizer_mode_per_song') ?? '-',
+                    legacyEnabled: String(visual.randomVisualizerModePerSong), playerState,
                     rawSong: String(song?.id ?? '-'), displaySong: String(displaySong?.id ?? '-'),
+                    queue: queue.map(item => item.id).join(','),
                     displayLyrics: displayLyrics?.lines[0]?.fullText ?? '-',
                     ...readRuntimeAppearance(),
                 }).map(([key, value]) => (
                     <React.Fragment key={key}>
-                        <dt hidden={['appearance', 'protectedSettings', 'rendererTunings'].includes(key)}>{key}</dt>
-                        <dd data-runtime={key} hidden={['appearance', 'protectedSettings', 'rendererTunings'].includes(key)}>{value}</dd>
+                        <dt hidden={['appearance', 'protectedSettings', 'rendererTunings', 'savedRendererTunings'].includes(key)}>{key}</dt>
+                        <dd data-runtime={key} hidden={['appearance', 'protectedSettings', 'rendererTunings', 'savedRendererTunings'].includes(key)}>{value}</dd>
                     </React.Fragment>
                 ))}
             </dl>
@@ -102,19 +131,22 @@ const RuntimeControls: React.FC = () => {
     );
 };
 
-const AdaptiveLyricsRuntimeProbe: React.FC = () => {
+const AdaptiveLyricsRuntimeProbe: React.FC<{ restoreStoredStyle?: boolean }> = ({ restoreStoredStyle = false }) => {
     const [ready, setReady] = useState(false);
     useLayoutEffect(() => {
-        const adaptive = useAdaptiveLyricsStore.getState();
-        adaptive.handleToggleAdaptiveLyrics(false);
-        adaptive.handleToggleRandomizeAll(false);
-        adaptive.clearAdaptiveStyle();
-        useAdaptiveLyricsStore.setState({ rerollSequence: 0, recentModes: [] });
-        useVisualizerSettingsStore.getState().handleSetVisualizerMode('classic', { notify: false });
-        useVisualizerSettingsStore.getState().handleSetVisualizerOpacity(0.5);
-        useVisualizerSettingsStore.getState().handleSetBackgroundOpacity(0.9);
-        useVisualizerSettingsStore.setState({ randomVisualizerModePerSong: false });
-        usePlaybackStore.setState({ currentSong: SONGS[0], lyrics: LYRICS[0], playQueue: SONGS, transitionDisplay: null, duration: 180 });
+        // Restart coverage must exercise import-time hydration without overwriting its saved appearance.
+        if (!restoreStoredStyle) {
+            const adaptive = useAdaptiveLyricsStore.getState();
+            adaptive.handleToggleAdaptiveLyrics(false);
+            adaptive.handleToggleRandomizeAll(false);
+            adaptive.clearAdaptiveStyle();
+            useAdaptiveLyricsStore.setState({ rerollSequence: 0, recentModes: [] });
+            useVisualizerSettingsStore.getState().handleSetVisualizerMode('classic', { notify: false });
+            useVisualizerSettingsStore.getState().handleSetVisualizerOpacity(0.5);
+            useVisualizerSettingsStore.getState().handleSetBackgroundOpacity(0.9);
+            useVisualizerSettingsStore.setState({ randomVisualizerModePerSong: false });
+        }
+        usePlaybackStore.setState({ currentSong: SONGS[0], lyrics: LYRICS[0], playQueue: SONGS, transitionDisplay: null, duration: 180, playerState: PlayerState.PLAYING });
         setReady(true);
     }, []);
     return ready ? <RuntimeControls /> : null;
