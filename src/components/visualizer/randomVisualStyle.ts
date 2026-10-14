@@ -30,7 +30,6 @@ export const randomizeVisualStyle = ({ scope = 'lyrics', random = Math.random, p
     const mode = preferredMode && compatible.includes(preferredMode) ? preferredMode
         : candidates.length ? chooseVisualStyleValue(candidates, random) : state.visualizerMode;
     state.handleSetVisualizerMode(mode, { notify: false });
-    VISUALIZER_REGISTRY.find(entry => entry.mode === mode)?.randomizeSettings?.(scope, random);
     state.handleSetClassicTuning(tuning.classicTuning);
     state.handleSetCadenzaTuning(tuning.cadenzaTuning);
     state.handleSetPartitaTuning(tuning.partitaTuning);

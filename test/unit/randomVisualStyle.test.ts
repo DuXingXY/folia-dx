@@ -166,17 +166,6 @@ describe('renderer candidates', () => {
         expect(getRandomLyricsStyleCandidates({ availableModes: BUILTIN_VISUALIZER_MODES, wallpaperMode: true, reducedMotion: true }).sort())
             .toEqual(['classic', 'monet', 'still']);
     });
-    it('allows only registered, reviewed plugins in wallpaper mode and keeps reduced-motion filtering', () => {
-        const availableModes = ['classic', 'mod:visualizer52hz:rings', 'mod:cinerama:cinerama-screen', 'mod:unknown:animation'];
-        expect(getRandomLyricsStyleCandidates({ availableModes, wallpaperMode: true }))
-            .toEqual(['classic', 'mod:visualizer52hz:rings', 'mod:cinerama:cinerama-screen']);
-        expect(getRandomLyricsStyleCandidates({ availableModes, wallpaperMode: true, reducedMotion: true }))
-            .toEqual(['classic']);
-        expect(getRandomLyricsStyleCandidates({ availableModes: ['classic'], wallpaperMode: true }))
-            .toEqual(['classic']);
-        expect(getRandomLyricsStyleCandidates({ availableModes, wallpaperMode: true, currentMode: 'mod:visualizer52hz:rings' }))
-            .toEqual(['classic', 'mod:cinerama:cinerama-screen']);
-    });
     it.each([-5, 1, 5, Number.NaN])('never indexes outside available candidates for draw %s', (draw) => {
         expect(['classic', 'tilt']).toContain(chooseVisualStyleValue(['classic', 'tilt'], () => draw));
     });

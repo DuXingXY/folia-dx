@@ -25,7 +25,6 @@ import {
 } from '../../types';
 import type { VisualizerTuningBundle } from './tuningRegistry';
 import type { VisualizerBackgroundConfig } from './backgrounds/definition';
-import type { RandomVisualStyleScope } from '../../types/randomVisualStyle';
 
 // src/components/visualizer/definition.ts
 // Shared contracts for discoverable visualizer modes.
@@ -188,8 +187,6 @@ export interface VisualizerRegistryEntry {
     render: (props: VisualizerSharedProps) => React.ReactElement;
     renderSettingsPanel?: (props: VisualizerSettingsPanelProps) => React.ReactNode;
     resetSettings?: (props: VisualizerSettingsResetProps) => void;
-    /** Host adapter for schema-backed settings; this is not part of the Folium plugin API. */
-    randomizeSettings?: (scope: RandomVisualStyleScope, random: () => number) => void;
     /*
      * True when this mode's layout atoms come from whole-line word segmentation
      * (utils/lyrics/wordSegmentation), so the user's saved split for a song changes what it draws.
