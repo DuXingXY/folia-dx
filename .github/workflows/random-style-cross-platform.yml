@@ -1,6 +1,6 @@
 name: Random style cross-platform verification
 
-# This fork-only branch validates the unchanged source commit of upstream PR #601.
+# This fork-only branch validates the exact source commit of upstream PR #601.
 on:
   push:
     branches:
@@ -23,7 +23,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     env:
-      SOURCE_SHA: 550a65a3202fd3408efe2a2e6138115a6b8b3187
+      SOURCE_SHA: d48b40c226f1503d534731dc11bf31646e44ca43
     defaults:
       run:
         shell: bash
@@ -67,13 +67,23 @@ jobs:
       - name: Run typecheck
         run: npm run typecheck
 
-      - name: Run 121 relevant unit tests
+      - name: Run relevant unit tests
         run: >
           npm run test:unit --
           test/unit/randomVisualStyle.test.ts
           test/unit/command-palette/commandRegistry.test.ts
           test/unit/command-palette/commandRegistryContract.test.ts
           test/unit/visualizer/visualSettingsImportExport.test.ts
+          test/unit/mod-system/foliumRandomVisualizerSettings.test.ts
+          test/unit/electron/desktopLyricMode.test.ts
+          test/unit/electron/windowsWallpaperController.test.ts
+          test/unit/electron/windowsWallpaperMouse.test.ts
+          test/unit/electron/windowsWallpaperTarget.test.ts
+          test/unit/electron/wallpaperEntryRequest.test.ts
+          test/unit/electron/macWallpaperController.test.ts
+          test/unit/electron/linuxDesktopIntegration.test.ts
+          test/unit/electron/wallpaperWatchdog.test.ts
+          test/unit/electron/windowPlaybackHandoff.test.ts
           --reporter=default --reporter=json --outputFile=.verification/unit-results.json
 
       - name: Run 6 browser component tests
