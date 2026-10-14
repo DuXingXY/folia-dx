@@ -12,7 +12,12 @@ export interface RandomLyricsStyleContext {
 }
 
 const REDUCED_MOTION_MODES = new Set(['still', 'classic', 'monet']);
-const WALLPAPER_MODES = new Set(['still', 'classic', 'monet', 'fume', 'partita', 'cappella']);
+const WALLPAPER_MODES = new Set([
+    'still', 'classic', 'monet', 'fume', 'partita', 'cappella',
+    // Host-reviewed wallpaper-compatible plugins; candidates still come from the
+    // live registry, and reduced-motion filtering remains independent of this list.
+    'mod:visualizer52hz:rings', 'mod:cinerama:cinerama-screen',
+]);
 
 /** Keep the only compatible renderer when excluding it would break a motion preference. */
 export const getRandomLyricsStyleCandidates = (context: RandomLyricsStyleContext): VisualizerMode[] => {

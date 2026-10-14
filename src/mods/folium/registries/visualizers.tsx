@@ -5,6 +5,7 @@ import type { VisualizerMode } from '@/types';
 import type { FoliumParam, FoliumParamAccess, FoliumVisualizerDef } from '../contract';
 import { sanitizeFoliumParams } from '../params';
 import { createFoliumParamAccess } from '../paramStore';
+import { randomizeFoliumVisualizerSettings } from '../randomVisualizerSettings';
 import { createFoliumRegistry } from '../registry';
 import { FoliumSettingsCard } from '../FoliumSettingsCard';
 
@@ -55,6 +56,9 @@ const buildRegistryEntry = (id: string, modId: string, stored: StoredFoliumVisua
         previewSeed: stored.mode,
         previewStartOffset: 0,
         tuningKind: 'none',
+        randomizeSettings: settingsAccess
+            ? (scope, random) => randomizeFoliumVisualizerSettings(id, settingsAccess, scope, random)
+            : undefined,
         // Lazy like every builtin mode's renderer (callers provide Suspense): the
         // shell and subtitle layer pull in UI stores that registration alone —
         // e.g. in the export window's entry bundle — must not load.
